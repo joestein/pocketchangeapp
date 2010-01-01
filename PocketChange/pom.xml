@@ -7,11 +7,11 @@
   <packaging>war</packaging>
   <name>PocketChangeApp</name>
   <inceptionYear>2008</inceptionYear>
-  <!--
-  <description>A Lift Application to support the Lift Book.</description>
-  -->
+  <description>A modification of
+      "A Lift Application to support the Lift Book" to use MongoDB
+      document-oriented database for storage.</description>
   <properties>
-    <scala.version>2.7.3</scala.version>
+    <scala.version>2.7.7</scala.version>
   </properties>
 
   <pluginRepositories>
@@ -45,6 +45,15 @@
       <id>tyler.weir</id>
       <name>Tyler Weir</name>
       <timezone>-5</timezone>
+    </developer>
+    <developer>
+        <id>alaz</id>
+        <name>Alexander Azarov</name>
+        <email>azarov@osinka.ru</email>
+        <timezone>+3</timezone>
+        <roles>
+            <role>mongodb-scala-driver developer</role>
+        </roles>
     </developer>
   </developers> 
 
@@ -87,6 +96,16 @@
       <version>10.2.2.0</version>
     </dependency>
     -->
+    <dependency>
+      <groupId>com.osinka</groupId>
+      <artifactId>mongo-scala-driver</artifactId>
+      <version>0.7.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongo-java-driver</artifactId>
+      <version>1.2</version>
+    </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>servlet-api</artifactId>

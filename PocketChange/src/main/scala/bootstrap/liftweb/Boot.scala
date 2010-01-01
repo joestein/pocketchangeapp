@@ -10,7 +10,8 @@ import java.sql.{Connection, DriverManager}
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.api._
 import com.pocketchangeapp.util.{Charting,Image}
- 
+import com.pocketchangeapp.db.Database
+
 /* Connect Lucene/Compass for search */
 class Boot {
   def boot {
@@ -18,9 +19,17 @@ class Boot {
       _.setCharacterEncoding("UTF-8")
     }
 
-    if (!DB.jndiJdbcConnAvailable_?) DB.defineConnectionManager(DefaultConnectionIdentifier, DBVendor)
+    Database.ensureIndexes()
+    S.addAround(new LoanWrapper {
+        def apply[T] (f : => T): T =
+            try {
+                Database.mongo.requestStart()
+                f
+            } finally {
+                Database.mongo.requestDone()
+            }
+    })
     LiftRules.addToPackages("com.pocketchangeapp")     
-    Schemifier.schemify(true, Log.infoF _, User, Tag, Account, AccountAdmin, AccountViewer, AccountNote, Expense, ExpenseTag)
 
     LiftRules.setSiteMap(SiteMap(MenuInfo.menu :_*))
 
