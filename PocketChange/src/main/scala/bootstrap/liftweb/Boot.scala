@@ -5,8 +5,6 @@ import net.liftweb.http._
 import net.liftweb.sitemap._
 import net.liftweb.sitemap.Loc._
 import Helpers._
-import net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, ConnectionIdentifier}
-import java.sql.{Connection, DriverManager}
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.api._
 import com.pocketchangeapp.util.{Charting,Image}
@@ -20,15 +18,7 @@ class Boot {
     }
 
     Database.ensureIndexes()
-    S.addAround(new LoanWrapper {
-        def apply[T] (f : => T): T =
-            try {
-                Database.mongo.requestStart()
-                f
-            } finally {
-                Database.mongo.requestDone()
-            }
-    })
+    S.addAround(Database.liftRequestWrapper)
     LiftRules.addToPackages("com.pocketchangeapp")     
 
     LiftRules.setSiteMap(SiteMap(MenuInfo.menu :_*))
@@ -72,23 +62,3 @@ object MenuInfo {
     Menu(Loc("help", List("help", "index"), "Help")) ::
     User.sitemap
 }
-
-object DBVendor extends ConnectionManager {
-  def newConnection(name: ConnectionIdentifier): Box[Connection] = {
-    try {
-      /** Uncomment if you really want Derby
-       * 
-      Class.forName("org.apache.derby.jdbc.EmbeddedDriver")
-      val dm = DriverManager.getConnection("jdbc:derby:pca_example;create=true")
-      */
-
-      Class.forName("org.h2.Driver")
-      val dm = DriverManager.getConnection("jdbc:h2:pca_example")
-      Full(dm)
-    } catch {
-      case e : Exception => e.printStackTrace; Empty
-    }
-  }
-  def releaseConnection(conn: Connection) {conn.close}
-}
-
