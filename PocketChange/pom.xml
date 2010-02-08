@@ -70,11 +70,6 @@
      <version>${lift.version}</version>
     </dependency>
     <dependency>
-      <groupId>net.liftweb</groupId>
-      <artifactId>lift-mapper</artifactId>
-      <version>${lift.version}</version>
-    </dependency> 
-    <dependency>
       <groupId>jfree</groupId>
       <artifactId>jfreechart</artifactId>
       <version>1.0.11</version>
