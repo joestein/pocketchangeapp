@@ -7,7 +7,10 @@ package com.pocketchangeapp.model
 import _root_.java.math.MathContext
 import _root_.java.util.Date
 
-import _root_.net.liftweb.mapper._
+import com.mongodb.DBObject
+import com.pocketchangeapp.db._
+import com.osinka.mongodb._
+import com.osinka.mongodb.shape._
 import _root_.scala.xml.Text
 
 import _root_.net.liftweb.util.Helpers._
@@ -19,238 +22,195 @@ import _root_.java.text.{DateFormat,SimpleDateFormat}
 
 import com.pocketchangeapp.util.Util
 
-class Expense extends LongKeyedMapper[Expense] with IdPK {
-  def getSingleton = Expense
+class Expense(val account: Account) extends MongoObject {
+    var dateOf: Date = _
+    var serialNumber: Long = 0
+    var currentBalance: Double = 0.0
+    var amount: Double = 0.0
+    var description: Option[String] = None
+    var notes: Option[String] = None
+    // TODO: receipt: GridFS
+//    var receipt: // should be GridFS
+//    var receiptMime: Option[String] = None
+    var tags: List[String] = Nil
 
-  object account extends MappedLongForeignKey(this, Account) {
-    override def dbIndexed_? = true
-  }
+    def accountName = Text("My account is " + account.name)
 
-  def accountName = Text("My account is " + account.obj.map(_.name.is).openOr("unknown"))
-
-  object dateOf extends MappedDateTime(this) {
-    final val dateFormat = 
+    final val dateFormat =
       DateFormat.getDateInstance(DateFormat.SHORT)
-    override def asHtml = Text(dateFormat.format(is))
-  }
 
-  object serialNumber extends MappedLong(this)
+    def dateAsHtml = Text(dateFormat.format(dateOf))
 
-  // The amount and balance fields have up to 16 digits and 2 decimal places
-  object currentBalance extends MappedDecimal(this, MathContext.DECIMAL64, 2)
-
-  object amount extends MappedDecimal(this, MathContext.DECIMAL64, 2)
-
-  // Holds a brief description of the entry
-  object description extends MappedString(this, 100) 
-
-  object notes extends MappedTextarea(this, 1000) {
-    override def textareaCols = 60
-    override def textareaRows = 8
-  }
-
-  object receipt extends MappedBinary(this)
-  object receiptMime extends MappedString(this,100)
-
-  private object _dbTags extends HasManyThrough(this, Tag, ExpenseTag, ExpenseTag.expense, ExpenseTag.tag)
-
-  private[model] var _tags : List[Tag] = _
-
-  private val locker = new Object
-
-  def tags : List[Tag] = locker.synchronized {
-    if (_tags eq null) {
-      _tags = _dbTags()
+    def tags(newTags: String): this.type = {
+        tags = (tags ++ newTags.roboSplit(",")).removeDuplicates
+        this
     }
-    _tags
-  }
 
-  def tags (newTags : String) = locker.synchronized {
-    _tags = newTags.roboSplit(",").map(Tag.byName(account, _))
-    this
-  }
-
-  def tags (newTags : List[Tag]) = locker.synchronized {
-    _tags = newTags
-    this
-  }
-
-  def tagsToo : List[Tag] = ExpenseTag.findAll(By(ExpenseTag.expense, this.id)).map(_.tag.obj.open_!)
-
-  def showTags = Text(tags.map(_.name.is).mkString(", "))
-  def showXMLTags: NodeSeq = tags.map(t => <tag>{t.name.is}</tag>)
-  def showJSONTags: String = tags.map(t => {"'" + t.name.is + "'" }).mkString(", ") 
-
-  def owner = account.obj match {
-    case Full(acct) => acct.owner.obj
-    case _ => Empty
-  }
-
-  override def equals (other : Any) = other match {
-    case e : Expense if e.id.is == this.id.is => true
-    case _ => false
-  }
-
-  override def hashCode = this.id.is.hashCode
-
-  private def getAccountName(id: Long): String = {
-    Account.find(By(Account.id, id)) match {
-      case Full(a) => a.name.is
-      case _ => "No Account Name"
+    def tags(newTags: List[String]): this.type = {
+        tags = newTags
+        this
     }
-  }
 
-  def toXML: NodeSeq = {
-   val id = "http://www.pocketchangeapp.com/api/expense/" + this.id
-   val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-   val edate = formatter.format(this.dateOf.is)
+    def owner = account.owner
 
-    <expense>
-      <id>{id}</id>
-      <accountname>{getAccountName(account.is)}</accountname>
-      <date>{edate}</date>
-      <description>{description.is}</description>
-      <amount>{amount.is.toString}</amount>
-      <tags>
-        {showXMLTags}
-      </tags>
-    </expense>
-  }
+    def showTags = Text(tags.mkString(", "))
+    def showXMLTags: NodeSeq = tags.map(t => <tag>{t}</tag>)
+    def showJSONTags: String = tags.map(t => {"'" + t + "'" }).mkString(", ")
 
+    override def equals(other: Any) = other match {
+        case e : Expense if e.mongoOID == this.mongoOID => true
+        case _ => false
+    }
 
-  /* Atom requires either an entry or feed to have:
-   - title
-   - lastupdated
-   - uid
-  */
-  def toAtom = {
-   val id = "http://www.pocketchangeapp.com/api/expense/" + this.id
-   val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-   val edate = formatter.format(this.dateOf.is)
+    override def hashCode = this.mongoOID.hashCode
 
-   <entry xmlns="http://www.w3.org/2005/Atom">
-    <expense>
-      <id>{id}</id>
-      <accountname>{getAccountName(account.is)}</accountname>
-      <date>{edate}</date>
-      <description>{description.is}</description>
-      <amount>{amount.is.toString}</amount>
-      <tags>
-        {showXMLTags}
-      </tags>
-     </expense>
-    </entry>
-  }
+    private def getAccountName = account.name
 
+    def toXML: NodeSeq = {
+        val id = this.mongoOID map { "http://www.pocketchangeapp.com/api/expense/" + _ }
+        val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        val edate = formatter.format(this.dateOf)
 
-  def toJSON = {
-   val id = "http://www.pocketchangeapp.com/api/expense/" + this.id
-   val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-   val edate = formatter.format(this.dateOf.is)
+        <expense>
+            <id>{id}</id>
+            <accountname>{getAccountName}</accountname>
+            <date>{edate}</date>
+            <description>{description}</description>
+            <amount>{amount.toString}</amount>
+            <tags>
+                {showXMLTags}
+            </tags>
+        </expense>
+    }
 
-   "{'expense':{ 'id':'" + id + "','accountname':'" + getAccountName(account.is) + "'," +
-   "'date':'" + edate + "'," +
-   "'description':'" + description.is + "'," +
-   "'amount':'" + amount.is.toString + "'," +
-   "'tags': [" + showJSONTags + "]}"
-  }
+    /* Atom requires either an entry or feed to have:
+    - title
+    - lastupdated
+    - uid
+    */
+    def toAtom = {
+        val id = this.mongoOID map { "http://www.pocketchangeapp.com/api/expense/" + _ }
+        val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        val edate = formatter.format(this.dateOf)
 
+        <entry xmlns="http://www.w3.org/2005/Atom">
+            <expense>
+                <id>{id}</id>
+                <accountname>{getAccountName}</accountname>
+                <date>{edate}</date>
+                <description>{description}</description>
+                <amount>{amount.toString}</amount>
+                <tags>
+                    {showXMLTags}
+                </tags>
+            </expense>
+        </entry>
+    }
 
+    def toJSON =
+        this.mongoOID map { id =>
+            val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+            val edate = formatter.format(this.dateOf)
 
+            "{'expense':{ 'id':'" + "http://www.pocketchangeapp.com/api/expense/" + id + "','accountname':'" + getAccountName + "'," +
+            "'date':'" + edate + "'," +
+            "'description':'" + description + "'," +
+            "'amount':'" + amount.toString + "'," +
+            "'tags': [" + showJSONTags + "]}"
+        }
 }
 
-object Expense extends Expense with LongKeyedMetaMapper[Expense] {
-  override def fieldOrder = List(dateOf, amount, description, notes)
+object Expense extends MongoObjectShape[Expense] with Model[Expense] {
+    override val collectionName = "expense"
 
-  override def afterSave = addTags _ :: Nil
+    override val indexes = Nil
 
-  private def addTags (entry : Expense) {
-    if (entry._tags ne null) {
-      entry._tags.foreach(ExpenseTag.join(_, entry))
+    lazy val account = Field.ref("account", Account.getCollection, _.account)
+    lazy val dateOf = Field.scalar("dateOf", _.dateOf, (x: Expense, v: Date) => x.dateOf = v)
+    lazy val serialNumber = Field.scalar("serialNumber", _.serialNumber, (x: Expense, v: Long) => x.serialNumber = v)
+    lazy val currentBalance = Field.scalar("currentBalance", _.currentBalance, (x: Expense, v: Double) => x.currentBalance = v)
+    lazy val amount = Field.scalar("amount", _.amount, (x: Expense, v: Double) => x.amount = v)
+    lazy val description = Field.optional("description", _.description, (x: Expense, v: Option[String]) => x.description = v)
+    lazy val notes = Field.optional("notes", _.notes, (x: Expense, v: Option[String]) => x.notes = v)
+//    var receipt: // should be GridFS
+//    var receiptMime: Option[String] = None
+    lazy val tags = Field.array("tags", _.tags, (x: Expense, l: Seq[String]) => x.tags = l.toList )
+
+    lazy val * = List(account, dateOf, serialNumber, currentBalance, amount, description, notes, tags)
+
+    override def factory(dbo: DBObject) = for {account(a) <- Some(dbo)} yield Expense(a)
+
+    def getByAcct(acct: Account, startDate: Box[Date], endDate: Box[Date]) = {
+        val clauses = Full(account is_== acct) :: startDate.map{dateOf is_>=} :: endDate.map{dateOf is_<=} :: Nil
+        (clauses.flatten reduceLeft {_ and _}).get sortBy serialNumber.descending in coll
     }
-  }
 
-  def getByAcct (account : Account, startDate : Box[Date], endDate : Box[Date], order : Box[OrderBy[Expense,_]], params : QueryParam[Expense]*) : List[Expense] = {
-    // Set up some query parameters
-    val dateClause : QueryParam[Expense] = (startDate,endDate) match {
-      case (Full(start), Full(end)) => BySql("expense.dateOf between ? and ?",
-					     IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-					     start, end)
-      case (Full(start), Empty) => BySql("expense.dateOf >= ?",
-					 IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-					 start)
-      case (Empty, Full(end)) => BySql("expense.dateOf <= ?",
-				       IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-				       end)
-      case _ => new Ignore[Expense]
+//def getByAcct (account : Account, startDate : Box[Date], endDate : Box[Date], order : Box[OrderBy[Expense,_]], params : QueryParam[Expense]*) : List[Expense] = {
+//    // Set up some query parameters
+//    val dateClause : QueryParam[Expense] = (startDate,endDate) match {
+//      case (Full(start), Full(end)) => BySql("expense.dateOf between ? and ?",
+//					     IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
+//					     start, end)
+//      case (Full(start), Empty) => BySql("expense.dateOf >= ?",
+//					 IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
+//					 start)
+//      case (Empty, Full(end)) => BySql("expense.dateOf <= ?",
+//				       IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
+//				       end)
+//      case _ => new Ignore[Expense]
+//    }
+//
+//    val entryOrder : QueryParam[Expense] = order openOr OrderBy(Expense.serialNumber, Descending)
+//
+//
+//    Expense.findAll((By(Expense.account, account.id) :: dateClause :: entryOrder :: params.toList).toSeq : _*)
+//  }
+
+    def getLastExpenseData(acct: Account, date: Date): (Long, Double) = getByAcct(acct, Empty, Full(date)).headOption match {
+        case expense => (expense.serialNumber, expense.currentBalance)
+        case _ => (0, 0)
     }
-    
-    val entryOrder : QueryParam[Expense] = order openOr OrderBy(Expense.serialNumber, Descending)
 
+//  // returns the serial and balance of the last entry before this one
+//  def getLastExpenseData (acct : Account, date : Date) : (Long,BigDecimal) = {
+//    // Find the last entry on or before the given date
+//    val results = getByAcct(acct, Empty, Full(date), Empty, MaxRows(1))
+//
+//    results match {
+//      case entry :: Nil => (entry.serialNumber.is, entry.currentBalance.is)
+//      case Nil => (0,BigDecimal(0))
+//      case _ => throw new Exception("Invalid prior entry query results") // TODO: handle this better
+//    }
+//  }
+//
+//  val updateString = String.format("update %s set %s = %s + 1, %s = %s + ? where %s >= ?",
+//				   Expense.dbTableName,
+//				   Expense.serialNumber.dbColumnName,
+//				   Expense.serialNumber.dbColumnName,
+//				   Expense.currentBalance.dbColumnName,
+//				   Expense.currentBalance.dbColumnName,
+//				   Expense.serialNumber.dbColumnName)
+//
+//  /**
+//   * This method should be called before inserting the new serial number or else you'll get
+//   * a duplicate serial
+//   */
+//  def updateEntries (serial : Long, amount : BigDecimal) = {
+//    // Simpler to do a bulk update via SQL, unfortunately
+//    DB.use(DefaultConnectionIdentifier) { conn =>
+//	DB.prepareStatement(updateString, conn) { stmt =>
+//	  // pass in the underlying java BigDecimal
+//	  stmt.setBigDecimal(1, amount.bigDecimal)
+//	  stmt.setLong(2, serial)
+//	  stmt.executeUpdate()
+//	}
+//    }
+//  }
 
-    Expense.findAll((By(Expense.account, account.id) :: dateClause :: entryOrder :: params.toList).toSeq : _*)
-  }
+    def findTagExpenses(search: String): List[Expense] = (tags ~ search in coll).toList.removeDuplicates
 
-  
-
-  // returns the serial and balance of the last entry before this one
-  def getLastExpenseData (acct : Account, date : Date) : (Long,BigDecimal) = {
-    // Find the last entry on or before the given date
-    val results = getByAcct(acct, Empty, Full(date), Empty, MaxRows(1))
-
-    results match {
-      case entry :: Nil => (entry.serialNumber.is, entry.currentBalance.is)
-      case Nil => (0,BigDecimal(0))
-      case _ => throw new Exception("Invalid prior entry query results") // TODO: handle this better
-    }
-  }
-
-  val updateString = String.format("update %s set %s = %s + 1, %s = %s + ? where %s >= ?",
-				   Expense.dbTableName,
-				   Expense.serialNumber.dbColumnName,
-				   Expense.serialNumber.dbColumnName,
-				   Expense.currentBalance.dbColumnName,
-				   Expense.currentBalance.dbColumnName,
-				   Expense.serialNumber.dbColumnName)
-
-  /**
-   * This method should be called before inserting the new serial number or else you'll get
-   * a duplicate serial
-   */
-  def updateEntries (serial : Long, amount : BigDecimal) = {
-    // Simpler to do a bulk update via SQL, unfortunately
-    DB.use(DefaultConnectionIdentifier) { conn =>
-	DB.prepareStatement(updateString, conn) { stmt =>
-	  // pass in the underlying java BigDecimal
-	  stmt.setBigDecimal(1, amount.bigDecimal)
-	  stmt.setLong(2, serial)
-	  stmt.executeUpdate()					 
-	}
-    }
-  }
-
-}
-  
-class ExpenseTag extends LongKeyedMapper[ExpenseTag] with IdPK {
-  def getSingleton = ExpenseTag
-
-  object tag extends MappedLongForeignKey(this, Tag) {
-    override def dbIndexed_? = true
-  }
-
-  object expense extends MappedLongForeignKey(this, Expense) {
-    override def dbIndexed_? = true
-  }
-}
-
-object ExpenseTag extends ExpenseTag with LongKeyedMetaMapper[ExpenseTag] {
-  override def fieldOrder = Nil
-
-  def join (tag : Tag, tx : Expense) = 
-    this.create.tag(tag).expense(tx).save
-
-  def findTagExpenses (search : String) : List[Expense] = 
-    findAll(In(ExpenseTag.tag,
-	       Tag.id,
-	       Like(Tag.name, search))).map(_.expense.obj.open_!).removeDuplicates
+//  def findTagExpenses (search : String) : List[Expense] =
+//    findAll(In(ExpenseTag.tag,
+//	       Tag.id,
+//	       Like(Tag.name, search))).map(_.expense.obj.open_!).removeDuplicates
 }

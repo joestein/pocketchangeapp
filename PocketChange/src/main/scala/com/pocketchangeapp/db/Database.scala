@@ -18,9 +18,13 @@ object Database {
     def getCollection(name: String) = mongo.getCollection(name)
 
     def ensureIndexes() {
-        for (m <- Models; fields <- m.indexes) {
-            val collection = m.getCollection
-            collection.underlying.ensureIndex( (fields foldLeft Map.empty) { (m,f) => m + f} )
+        for {m <- Models
+             mongodbColl = m.getCollection.underlying
+             fields <- m.indexes} {
+
+            val indexesRequired: DBObject =
+                (fields map {i => i._1.mongoFieldName -> i._2} foldLeft Map.empty[String,Any]) {(m,f) => m + f}
+            mongodbColl.ensureIndex( indexesRequired )
         }
     }
 
