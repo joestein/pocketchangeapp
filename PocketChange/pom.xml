@@ -12,6 +12,7 @@
       document-oriented database for storage.</description>
   <properties>
     <scala.version>2.7.7</scala.version>
+    <lift.version>1.0.3</lift.version>
   </properties>
 
   <pluginRepositories>
@@ -66,12 +67,12 @@
     <dependency>
       <groupId>net.liftweb</groupId>
       <artifactId>lift-core</artifactId>
-     <version>1.0</version>
+     <version>${lift.version}</version>
     </dependency>
     <dependency>
       <groupId>net.liftweb</groupId>
       <artifactId>lift-mapper</artifactId>
-      <version>1.0</version>
+      <version>${lift.version}</version>
     </dependency> 
     <dependency>
       <groupId>jfree</groupId>
@@ -89,13 +90,6 @@
       <artifactId>h2</artifactId>
       <version>1.1.112</version>
     </dependency>  
-    <!-- Derby doesn't handle BINARY fields over 32k
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derby</artifactId>
-      <version>10.2.2.0</version>
-    </dependency>
-    -->
     <dependency>
       <groupId>com.osinka</groupId>
       <artifactId>mongo-scala-driver</artifactId>
@@ -124,13 +118,6 @@
       <version>[6.1.12,)</version>
       <scope>test</scope>
     </dependency>
-    <!--
-    <dependency>
-      <groupId>postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>8.1-404.jdbc3</version>
-    </dependency> 
-    -->
     <!-- for LiftConsole -->
     <dependency>
       <groupId>org.scala-lang</groupId>
