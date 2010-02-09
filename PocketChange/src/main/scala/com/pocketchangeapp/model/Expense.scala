@@ -195,6 +195,11 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
 //   * This method should be called before inserting the new serial number or else you'll get
 //   * a duplicate serial
 //   */
+    def updateEntries(serial: Long, amount: Float) {
+        val c = getCollection
+        c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount)
+    }
+
 //  def updateEntries (serial : Long, amount : BigDecimal) = {
 //    // Simpler to do a bulk update via SQL, unfortunately
 //    DB.use(DefaultConnectionIdentifier) { conn =>
