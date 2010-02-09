@@ -18,7 +18,7 @@ class Boot {
     }
 
     Database.ensureIndexes()
-    S.addAround(Database.liftRequestWrapper)
+    S.addAround(Database.inLiftRequest)
     LiftRules.addToPackages("com.pocketchangeapp")     
 
     LiftRules.setSiteMap(SiteMap(MenuInfo.menu :_*))

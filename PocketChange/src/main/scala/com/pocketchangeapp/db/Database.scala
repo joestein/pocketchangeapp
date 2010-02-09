@@ -28,7 +28,7 @@ object Database {
         }
     }
 
-    object liftRequestWrapper extends LoanWrapper {
+    object inLiftRequest extends LoanWrapper {
         def apply[T] (f : => T): T =
             try {
                 mongo.requestStart()
