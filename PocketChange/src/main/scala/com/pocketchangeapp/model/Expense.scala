@@ -25,6 +25,7 @@ import com.pocketchangeapp.util.Util
 class Expense(val account: Account) extends MongoObject {
     var dateOf: Date = _
     var serialNumber: Long = 0
+    // TODO: BigDecimal
     var currentBalance: Double = 0.0
     var amount: Double = 0.0
     var description: Option[String] = None

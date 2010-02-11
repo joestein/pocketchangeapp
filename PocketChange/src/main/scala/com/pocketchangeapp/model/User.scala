@@ -1,40 +1,50 @@
 package com.pocketchangeapp.model
 
-import _root_.net.liftweb.mapper._
-import DB._
 import _root_.net.liftweb.util._
-import _root_.java.sql.Connection
+import _root_.net.liftweb.mongodb._
 
-/**
- * The singleton that has methods for accessing the database
- */
-object User extends User with MetaMegaProtoUser[User] {
-  override def dbTableName = "users" // define the DB table name
-  
-  // Just for testing purposes. In production we remove this
-  override def skipEmailValidation = true
+import com.mongodb.{DBObject,ObjectId}
+import com.pocketchangeapp.db._
+import com.osinka.mongodb._
+import com.osinka.mongodb.shape._
+import Preamble._
 
-  // Spruce up the forms a bit
-  override def screenWrap = 
-    Full(<lift:surround with="default" at="content"><div id="formBox"><lift:bind /></div></lift:surround>)
+class User extends MegaProtoUser {
+    def accounts = Account where {Account.owner is_== this} in Account.getCollection
 
-  // define the order fields will appear in forms and output
-  //override def fieldOrder = id :: firstName :: lastName :: email :: password :: Nil
+    def administred = Account where {Account.admins has this} in Account.getCollection
+
+    def editable = accounts ++ administred
+
+    def viewed = Account where {Account.viewers has this} in Account.getCollection
+
+    def allAccounts = accounts ++ administred ++ viewed
 }
 
-/**
- * An O-R mapped "User" class that includes first name, last name, password and we add a "Personal Essay" to it
- */
-class User extends MegaProtoUser[User] {
-  def getSingleton = User // what's the "meta" server
-  
-  def accounts : List[Account] = Account.findAll(By(Account.owner, this.id))
+object User extends MetaMegaProtoUser[User] with Model[User] {
+    override val collectionName = "user"
+    override val indexes = Nil
 
-  def administered : List[Account] = AccountAdmin.findAll(By(AccountAdmin.administrator, this.id)).map(_.account.obj.open_!)
+    lazy val * = super.*
 
-  def editable = accounts ++ administered
-    
-  def viewed : List[Account] = AccountViewer.findAll(By(AccountViewer.viewer, this.id)).map(_.account.obj.open_!)
+    override def factory(dbo: DBObject) = Some(create)
 
-  def allAccounts : List[Account] = accounts ::: administered ::: viewed
+    // Access methods, calling collection
+    override def create = new User
+
+    override def save(u: User) {
+        getCollection += u
+    }
+
+    override def one(q: ShapeQuery): Box[User] = (q in getCollection).firstOption
+
+    // Just for testing purposes. In production we remove this
+    override def skipEmailValidation = true
+
+    // Spruce up the forms a bit
+    override def screenWrap =
+        Full(<lift:surround with="default" at="content"><div id="formBox"><lift:bind /></div></lift:surround>)
+
+    // define the order fields will appear in forms and output
+    //override def fieldOrder = id :: firstName :: lastName :: email :: password :: Nil
 }
