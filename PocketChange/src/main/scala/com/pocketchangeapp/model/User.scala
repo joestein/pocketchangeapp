@@ -25,7 +25,7 @@ object User extends MetaMegaProtoUser[User] with Model[User] {
     override val collectionName = "user"
     override val indexes = Nil
 
-    lazy val * = super.*
+    override lazy val * = super.*
 
     override def factory(dbo: DBObject) = Some(create)
 

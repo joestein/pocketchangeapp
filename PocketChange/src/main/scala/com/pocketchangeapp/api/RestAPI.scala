@@ -13,6 +13,8 @@ import net.liftweb.util.Helpers.toLong
 
 import scala.xml.{Node, NodeSeq}
 
+import com.osinka.mongodb.Preamble._
+
 import com.pocketchangeapp.model._
 
 object RestAPI extends XMLApiHelper{
@@ -47,7 +49,7 @@ object RestAPI extends XMLApiHelper{
 
   // reacts to the GET Request
   def showExpenseXml(eid: String): LiftResponse = {
-    val e: Box[NodeSeq] = for(e <- Expense.find(By(Expense.id, eid.toLong))) yield {
+    val e: Box[NodeSeq] = for(e <- Expense byId eid) yield {
       <operation id="show_expense" success="true">{e.toXML}</operation>
 
     }
@@ -56,7 +58,7 @@ object RestAPI extends XMLApiHelper{
 
   // reacts to the GET Request
   def showExpenseAtom(eid: String): AtomResponse = {
-    val e: Box[Node] = for(e <- Expense.find(By(Expense.id, eid.toLong))) yield {
+    val e: Box[Node] = for(e <- Expense.byId(eid)) yield {
       e.toAtom
 
     }
@@ -67,14 +69,9 @@ object RestAPI extends XMLApiHelper{
 
 
   private def getAccount(e: String, n: String): Account = {
-    val u = User.find(By(User.email, e))
-   
-    val a = Account.findByName(u.open_!, n) match {
-      case acct :: Nil => acct
-      case _ => new Account
-    }
+    val u = User one {User.email is_== e} open_!
 
-    a
+    Account.findByName(u, n) getOrElse new Account(u)
   }
 
 
@@ -83,44 +80,52 @@ object RestAPI extends XMLApiHelper{
     var tempEmail = ""
     var tempPass = ""
     var tempAccountName = ""
+    var tempDateOf: java.util.Date = null
+    var tempAmount = 0F
+    var tempDescription = ""
 
-    var expense = new Expense
     req.xml match {
       case Full(<expense>{parameters @ _*}</expense>) => {
         for(parameter <- parameters){ parameter match {
           case <email>{email}</email> => tempEmail = email.text
           case <password>{password}</password> => tempPass = password.text
           case <accountName>{name}</accountName> => tempAccountName = name.text
-          case <dateOf>{dateof}</dateOf> => expense.dateOf(new java.util.Date(dateof.text))
-          case <amount>{value}</amount> => expense.amount(BigDecimal(value.text))
-          case <desc>{description}</desc> => expense.description(description.text)
+          case <dateOf>{dateof}</dateOf> => tempDateOf = new java.util.Date(dateof.text)
+          case <amount>{value}</amount> => tempAmount = value.text.toFloat
+          case <desc>{description}</desc> => tempDescription = description.text
           case _ =>
         }
       }
 
       try {
-        val u:User = User.find(By(User.email, tempEmail)) match {
-          case Full(user) if user.validated && user.password.match_?(tempPass) =>
+        val u:User = User one {User.email is_== tempEmail} match {
+          case Full(user) if user.validated && user.passwordMatch_?(tempPass) =>
             User.logUserIn(user)
             user
           case _ => new User
         }
 
-        val currentAccount = Account.find(By(Account.owner, u.id.is), By(Account.name, tempAccountName)).open_!
-        expense.account(currentAccount.id.is)
+        val currentAccount = Account one {Account.owner.is_==(u) and Account.name.is_==(tempAccountName)} open_!
+        val expense = new Expense(currentAccount)
+        expense.dateOf = tempDateOf
+        expense.amount = tempAmount
+        expense.description = tempDescription
 
         val (entrySerial,entryBalance) = Expense.getLastExpenseData(currentAccount, expense.dateOf)
 
-        expense.account(currentAccount).serialNumber(entrySerial + 1).tags("api").currentBalance(entryBalance + expense.amount)
+        expense.serialNumber = entrySerial + 1
+        expense.tags ::= "api"
+        expense.currentBalance = entryBalance + expense.amount
 
-        expense.validate match {
+        Expense.validate(expense) match {
           case Nil =>
-            Expense.updateEntries(entrySerial + 1, expense.amount.is)
-            expense.save
+            Expense.updateEntries(entrySerial + 1, expense.amount)
+            Expense.save(expense)
             println(currentAccount.name)
             //val acct = Account.find(currentAccount.name.is).open_!
-            val newBalance = currentAccount.balance.is + expense.amount.is
-            currentAccount.balance(newBalance).save
+            val newBalance = currentAccount.balance + expense.amount
+            currentAccount.balance = newBalance
+            Account.save(currentAccount)
 
             CreatedResponse(wrapXmlBody(<operation id="add_expense" success="true"></operation>), "text/xml")
           case _ =>

@@ -4,8 +4,9 @@
 
 package com.pocketchangeapp.model
 
-import java.math.MathContext
-import net.liftweb.util.Empty
+import _root_.java.math.MathContext
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.mongodb.MetaMapper
 
 import com.pocketchangeapp.db._
 import com.mongodb.DBObject
@@ -32,7 +33,7 @@ object Account extends MongoObjectShape[Account] with Model[Account] { account =
     
     override val indexes = List(name.ascending) :: Nil
 
-    lazy val owner = Field.ref("owner", User.coll, _.owner)
+    lazy val owner = Field.ref("owner", User.getCollection, _.owner)
     lazy val name = Field.scalar("name", _.name, (x: Account, v: String) => x.name = v)
     lazy val description = Field.scalar("description", _.description, (x: Account, v: String) => x.description = v)
     lazy val admins = Field.arrayRef("admins", User.getCollection, _.admins, (x: Account, l: Seq[User]) => x.admins = l.toList)
@@ -46,7 +47,7 @@ object Account extends MongoObjectShape[Account] with Model[Account] { account =
     
     lazy val * = List(owner, name, description, admins, viewers, tags, externalAccount, is_public, balance, notes)
 
-    override def factory(dbo: DBObject) = for {owner(u) <- Some(dbo)} yield new Account(u)
+    override def factory(dbo: DBObject) = for {owner(user) <- Some(dbo)} yield new Account(user)
 
-    def findByName(u: User, n: String) = (owner is_== u) and (name is_== n) in coll
+    def findByName(u: User, n: String): Box[Account] = this where {(owner is_== u) and (name is_== n)} in getCollection firstOption
 }

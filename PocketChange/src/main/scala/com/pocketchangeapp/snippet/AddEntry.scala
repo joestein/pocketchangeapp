@@ -20,7 +20,7 @@ class AddEntry extends StatefulSnippet {
     case "addentry" => add _
   }
 
-  var account : Long = _
+  var account : String = _
   var date = ""
   var desc = ""
   var value = ""
@@ -37,19 +37,25 @@ class AddEntry extends StatefulSnippet {
             /* Get the date correctly, add the datepicker: comes in as yyyy/mm/dd */
             val entryDate = Util.slashDate.parse(date)
 
-            val amount = BigDecimal(value)
+            val amount = value.toFloat
 
             // Rework to not throw exceptions
-            val currentAccount = Account.find(account).open_!
+            val currentAccount = Account.byId(account).get
 
             // We need to determine the last serial number and balance for the date in question
             val (entrySerial,entryBalance) = Expense.getLastExpenseData(currentAccount, entryDate)
 
-	  val e = Expense.create.account(account).dateOf(entryDate).serialNumber(entrySerial + 1)
-	           .description(desc).amount(BigDecimal(value)).tags(tags)
-		   .currentBalance(entryBalance + amount)
+	  val e = new Expense(currentAccount)
+          e.dateOf = entryDate
+          e.serialNumber = entrySerial + 1
+          e.description = desc
+          e.amount = value.toFloat
+          e.tags(tags)
+          e.currentBalance = entryBalance + amount
 
 	  // Add the optional receipt if it's the correct type
+          val receiptOk = true
+          /*
 	  val receiptOk = fileHolder match {
 	    case Full(FileParamHolder(_, null, _, _)) => true
 	    case Full(FileParamHolder(_, mime, _, data)) 
@@ -66,14 +72,16 @@ class AddEntry extends StatefulSnippet {
 	    }
 	    case _ => true
 	  }
+          */
 	      
-	  (e.validate,receiptOk) match {
+	  (Expense.validate(e),receiptOk) match {
             case (Nil,true) => {
 	      Expense.updateEntries(entrySerial + 1, amount)
-              e.save
-  	      val acct = Account.find(account).open_!
-	      val newBalance = acct.balance.is + e.amount.is
-	      acct.balance(newBalance).save
+              Expense save e
+
+              val newBalance = currentAccount.balance + e.amount
+	      currentAccount.balance = newBalance
+              Account save currentAccount
               notice("Entry added!")
 	      unregisterThisSnippet() // dpp: remove the statefullness of this snippet
 	    }
@@ -83,7 +91,7 @@ class AddEntry extends StatefulSnippet {
       }
 
         bind("e", in, 
-            "account" -> select(user.editable.map(acct => (acct.id.toString, acct.name)), Empty, id => account = id.toLong),
+            "account" -> select(user.editable.map(acct => (acct.mongoOID.toString, acct.name)).toSeq, Empty, oid => account = oid),
             "dateOf" -> text("", date = _) % ("size" -> "10"),
             "desc" -> text("", desc = _),
             "value" -> text("", value = _),

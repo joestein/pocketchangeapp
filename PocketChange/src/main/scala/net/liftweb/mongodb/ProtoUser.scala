@@ -29,7 +29,7 @@ trait MegaProtoUser extends MongoObject {
     var firstName: String = ""
     var lastName: String = ""
     var email: String = ""
-    var password: String = FatLazy(ProtoUser.defaultPassword)
+    val password = FatLazy(ProtoUser.defaultPassword)
     var uniqueId: String = ProtoUser.genUniqueId
 
     def userIdAsString: String = mongoOID.toString
@@ -61,17 +61,17 @@ trait MegaProtoUser extends MongoObject {
         uniqueId = ProtoUser.genUniqueId
     }
 
-    private val salt_i = FatLazy(Safe.randomString(16))
+    private val salt_i = FatLazy(randomString(16))
     private var invalidPw = false
     private var invalidMsg = ""
 
     def setPassword(f: Any): Boolean =
         f match {
             case a : Array[String] if (a.length == 2 && a(0) == a(1)) =>
-                password = a(0)
+                password() = a(0)
                 true
             case l : List[String] if (l.length == 2 && l.head == l(1)) =>
-                password = l.head
+                password() = l.head
                 true
             case _ =>
                 invalidPw = true
@@ -79,28 +79,28 @@ trait MegaProtoUser extends MongoObject {
                 false
         }
 
-    def validate: List[FieldError] = Nil
-
-    def passwordMatch(toMatch: String): Boolean = true
+    def passwordMatch_?(toMatch: String): Boolean = true
     
 }
 
-trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[ModelType] {
-    object firstName extends ScalarField("firstName", _.firstName, Some((x: ModelType, v: String) => x.firstName = v)) with LiftField {
+trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[ModelType] with MetaMapper[ModelType] {
+    def create: ModelType
+
+    object firstName extends ScalarField[String]("firstName", _.firstName, Some((x: ModelType, v: String) => x.firstName = v)) with MappedString {
         override def displayName = firstNameDisplayName
         override val fieldId = Some(Text("txtFirstName"))
     }
     
     def firstNameDisplayName = ??("First Name")
 
-    object lastName extends ScalarField("lastName", _.lastName, Some((x: ModelType, v: String) => x.lastName = v)) {
+    object lastName extends ScalarField[String]("lastName", _.lastName, Some((x: ModelType, v: String) => x.lastName = v)) with MappedString {
         override def displayName = lastNameDisplayName
         override val fieldId = Some(Text("txtLastName"))
     }
 
     def lastNameDisplayName = ??("Last Name")
 
-    object email extends ScalarField("email", _.email, Some((x: ModelType, v: String) => x.email = v)) {
+    object email extends ScalarField[String]("email", _.email, Some((x: ModelType, v: String) => x.email = v)) with MappedString {
         override def displayName = emailDisplayName
         override val fieldId = Some(Text("txtEmail"))
     }
@@ -108,18 +108,18 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     def emailDisplayName = ??("Email")
 
-    object password extends ScalarField("password", _.password, Some((x: ModelType, v: String) => x.password = v)) with LiftField {
-        override def displayName = fieldOwner.passwordDisplayName
+    object password extends ScalarField[String]("password", _.password.get, Some((x: ModelType, v: String) => x.password() = v)) with MappedString {
+        override def displayName = passwordDisplayName
     }
 
     def passwordDisplayName = ??("Password")
 
 //    object salt extends ScalarField("salt", _.salt)
     lazy val uniqueId = Field.scalar("uniqueId", _.uniqueId, (x: ModelType, v: String) => x.uniqueId = v)
-    lazy val validated = Field.scalar("validated", _.validated, (x: ModelType, v: String) => x.validated = v)
+    lazy val validated = Field.scalar("validated", _.validated, (x: ModelType, v: Boolean) => x.validated = v)
 
-    object locale extends MongoScalar[String] with ScalarContent[String] with LiftField {
-        override def displayName = fieldOwner.localeDisplayName
+    object locale extends MongoScalar[String] with ScalarContent[String] with MappedString {
+        override def displayName = localeDisplayName
         override val fieldId = Some(Text("txtLocale"))
         override val mongoFieldName = "locale"
         override val rep = new FieldRep[String] {
@@ -141,25 +141,19 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     def localeDisplayName = ??("Locale")
 
-    object timezone extends MongoScalar[String] with ScalarContent[String] with LiftField {
-        override def displayName = fieldOwner.timezoneDisplayName
+    object timezone extends MongoScalar[String] with ScalarContent[String] with MappedString {
+        override def displayName = timezoneDisplayName
         override val fieldId = Some(Text("txtTimeZone"))
         override val mongoFieldName = "tz"
         override val rep = new FieldRep[String] {
             override def get[A1>:String](x: ModelType): Option[A1] = Some(x.timezone.getID)
             override def put[A2<:String](x: ModelType)(a: Option[A2]) {
-                x.timezone = a flatMap {tz => tryo(TimeZone getTimeZone tz)} getOrElse TimeZone.getDefault
+                x.timezone = a flatMap {tz => Helpers.tryo(TimeZone getTimeZone tz)} getOrElse TimeZone.getDefault
             }
         }
     }
 
     def timezoneDisplayName = ??("Time Zone")
-
-    def create: ModelType
-
-    def save(u: ModelType): Unit
-
-    def one(q: ShapeQuery): Box[ModelType]
 
     def * = List(firstName, lastName, email, password, locale, timezone)
 
@@ -402,7 +396,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         val theName = signUpPath.mkString("")
 
         def testSignup() {
-            theUser.validate match {
+            validate(theUser) match {
                 case Nil =>
                     theUser.validated = skipEmailValidation
                     theUser.resetUniqueId
@@ -463,9 +457,9 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
     def login = {
         if (S.post_?) {
             S.param("username").
-            flatMap(username => one( this where {email is_== username} ) match {
+            flatMap(username => one( this where {email is_== username} )) match {
                 case Full(user) if user.validated &&
-                    user.passwordMatch(S.param("password").openOr("*")) =>
+                    user.passwordMatch_?(S.param("password").openOr("*")) =>
                     logUserIn(user); S.notice(S.??("logged.in")); S.redirectTo(homePage)
 
                 case Full(user) if !user.validated =>
@@ -559,7 +553,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         one(this where {uniqueId is_== id}) match {
             case Full(user) =>
                 def finishSet() {
-                    user.validate match {
+                    validate(user) match {
                         case Nil => S.notice(S.??("password.changed"))
                         save(user)
                         logUserIn(user); S.redirectTo(homePage)
@@ -593,10 +587,10 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         var newPassword: List[String] = Nil
 
         def testAndSet() {
-            if (!user.passwordMatch(oldPassword)) S.error(S.??("wrong.old.password"))
+            if (!user.passwordMatch_?(oldPassword)) S.error(S.??("wrong.old.password"))
             else {
                 user.setPassword(newPassword)
-                user.validate match {
+                validate(user) match {
                     case Nil => save(user); S.notice(S.??("pasword.changed")); S.redirectTo(homePage)
                     case xs => S.error(xs)
                 }
@@ -625,7 +619,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         val theName = editPath.mkString("")
 
         def testEdit() {
-            theUser.validate match {
+            validate(theUser) match {
                 case Nil =>
                     save(theUser)
                     S.notice(S.??("profle.updated"))
@@ -650,7 +644,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         signupFields.
         filter { f => !ignorePassword || f.ne(password) }.
         flatMap { f =>
-            f.toForm.toList map { form =>
+            f.toForm(user).toList map { form =>
                 (<tr><td>{f.displayName}</td><td>{form}</td></tr>) } }
 //        map(fi => getSingleton.getActualBaseField(user, fi)).
 //        filter(f => !ignorePassword || (f match {

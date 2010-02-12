@@ -13,10 +13,10 @@ object Image {
     try {
       User.currentUser match {
 	case Full(user) => {
-	  Expense.find(id.toLong) match {
+	  Expense.byId(id) match {
 	    case Full(e) => {
 	      if (e.owner == User.currentUser) {
-		InMemoryResponse(e.receipt.is, List("Content-Type" -> e.receiptMime.is), Nil, 200)
+		InMemoryResponse(e.receipt, List("Content-Type" -> e.receiptMime), Nil, 200)
 	      } else {
 		ForbiddenResponse()
 	      }

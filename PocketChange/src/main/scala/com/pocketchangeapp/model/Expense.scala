@@ -15,6 +15,7 @@ import _root_.scala.xml.Text
 
 import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.util.{Box,Empty,Full}
+import _root_.net.liftweb.mongodb.MetaMapper
 
 import scala.xml.{NodeSeq,Text}
 
@@ -28,11 +29,11 @@ class Expense(val account: Account) extends MongoObject {
     // TODO: BigDecimal
     var currentBalance: Double = 0.0
     var amount: Double = 0.0
-    var description: Option[String] = None
+    var description: String = ""
     var notes: Option[String] = None
     // TODO: receipt: GridFS
-//    var receipt: // should be GridFS
-//    var receiptMime: Option[String] = None
+    var receipt = new Array[Byte](0) // should be GridFS
+    var receiptMime = ""
     var tags: List[String] = Nil
 
     def accountName = Text("My account is " + account.name)
@@ -131,7 +132,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
     lazy val serialNumber = Field.scalar("serialNumber", _.serialNumber, (x: Expense, v: Long) => x.serialNumber = v)
     lazy val currentBalance = Field.scalar("currentBalance", _.currentBalance, (x: Expense, v: Double) => x.currentBalance = v)
     lazy val amount = Field.scalar("amount", _.amount, (x: Expense, v: Double) => x.amount = v)
-    lazy val description = Field.optional("description", _.description, (x: Expense, v: Option[String]) => x.description = v)
+    lazy val description = Field.scalar("description", _.description, (x: Expense, v: String) => x.description = v)
     lazy val notes = Field.optional("notes", _.notes, (x: Expense, v: Option[String]) => x.notes = v)
 //    var receipt: // should be GridFS
 //    var receiptMime: Option[String] = None
@@ -139,11 +140,12 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
 
     lazy val * = List(account, dateOf, serialNumber, currentBalance, amount, description, notes, tags)
 
-    override def factory(dbo: DBObject) = for {account(a) <- Some(dbo)} yield Expense(a)
+    override def factory(dbo: DBObject) = for {account(acct) <- Some(dbo)} yield new Expense(acct)
 
     def getByAcct(acct: Account, startDate: Box[Date], endDate: Box[Date]) = {
         val clauses = Full(account is_== acct) :: startDate.map{dateOf is_>=} :: endDate.map{dateOf is_<=} :: Nil
-        (clauses.flatten reduceLeft {_ and _}).get sortBy serialNumber.descending in coll
+        val query = clauses.flatMap{x => x} reduceLeft {_ and _}
+        Expense where query sortBy serialNumber.descending in getCollection
     }
 
 //def getByAcct (account : Account, startDate : Box[Date], endDate : Box[Date], order : Box[OrderBy[Expense,_]], params : QueryParam[Expense]*) : List[Expense] = {
@@ -168,7 +170,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
 //  }
 
     def getLastExpenseData(acct: Account, date: Date): (Long, Double) = getByAcct(acct, Empty, Full(date)).headOption match {
-        case expense => (expense.serialNumber, expense.currentBalance)
+        case Some(expense) => (expense.serialNumber, expense.currentBalance)
         case _ => (0, 0)
     }
 
@@ -196,7 +198,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
 //   * This method should be called before inserting the new serial number or else you'll get
 //   * a duplicate serial
 //   */
-    def updateEntries(serial: Long, amount: Float) {
+    def updateEntries(serial: Long, amount: Double) {
         val c = getCollection
         c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount)
     }
@@ -213,7 +215,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
 //    }
 //  }
 
-    def findTagExpenses(search: String): List[Expense] = (tags ~ search in coll).toList.removeDuplicates
+    def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
 
 //  def findTagExpenses (search : String) : List[Expense] =
 //    findAll(In(ExpenseTag.tag,

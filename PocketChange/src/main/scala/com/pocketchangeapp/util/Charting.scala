@@ -28,12 +28,7 @@ object Charting {
 
   private def withAccount (name : String)(f : Account => Box[LiftResponse]) : Box[LiftResponse] = 
     User.currentUser match {
-      case Full(user) => {
-	Account.findByName(user, name) match {
-	  case acct :: Nil => f(acct)
-	  case _ => Empty
-	}
-      }
+      case Full(user) => Account.findByName(user, name) flatMap f
       case _ => Full(RedirectResponse("/user_mgt/login")) // Must have a user to access accounts
     }
 
@@ -49,25 +44,24 @@ object Charting {
     acct =>
       val entries = Expense.getByAcct(acct, 
 				      Util.getDateParam("start", Util.noSlashDate.parse),
-				      Util.getDateParam("end", Util.noSlashDate.parse),
-				      Empty)
+				      Util.getDateParam("end", Util.noSlashDate.parse))
 
     val serialMap = new HashMap[String,Long]()
-    val dateMap = new HashMap[String,BigDecimal]()
+    val dateMap = new HashMap[String,Double]() // BigDecimal
     
     // Iterate over entries to find the last entry (and balance) for each date
     // It would be more efficient to just do this in SQL with a self-join, but then we wouldn't be using mapper...
     entries.foreach({entry =>
-      val date = Util.slashDate.format(entry.dateOf.is)
-      if (serialMap.getOrElse(date,0l) < entry.serialNumber.is) {
-	serialMap += date -> entry.serialNumber.is
-	dateMap += date -> entry.currentBalance.is
+      val date = Util.slashDate.format(entry.dateOf)
+      if (serialMap.getOrElse(date,0l) < entry.serialNumber) {
+	serialMap += date -> entry.serialNumber
+	dateMap += date -> entry.currentBalance
       }
     })
 
     val dataset = new DefaultCategoryDataset
 	  
-    dateMap.keySet.toList.sort(_ < _).foreach(key => dataset.addValue(dateMap(key), acct.name.is, key))
+    dateMap.keySet.toList.sort(_ < _).foreach(key => dataset.addValue(dateMap(key), acct.name, key))
 
     returnChartPNG(ChartFactory.createLineChart("Balance History for " + name,
 						"Date",
@@ -79,16 +73,15 @@ object Charting {
   private def buildTagChartData (account: Account) = {
     val entries = Expense.getByAcct(account, 
 				    Util.getDateParam("start", Util.noSlashDate.parse),
-				    Util.getDateParam("end", Util.noSlashDate.parse),
-				    Empty)
+				    Util.getDateParam("end", Util.noSlashDate.parse))
     
-    val tagMap = new HashMap[String,BigDecimal]
+    val tagMap = new HashMap[String,Double] // BigDecimal
 
     val zero = BigDecimal(0)
 
     entries.foreach({ entry =>
-      entry.tags.map(_.name.is).foreach { 
-	tag => tagMap += tag -> (tagMap.getOrElse(tag, zero) + entry.amount.is)
+      entry.tags.foreach { 
+	tag => tagMap += tag -> (tagMap.getOrElse(tag, 0.0) + entry.amount)
       }
     })
 

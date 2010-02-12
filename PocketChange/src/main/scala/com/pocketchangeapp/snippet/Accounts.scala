@@ -19,41 +19,34 @@ class Accounts {
 
   def manage (xhtml : NodeSeq) : NodeSeq = {
     def deleteAccount (acct : Account) {
-      // No cascade???
-      acct.admins.foreach(_.delete_!)
-      acct.viewers.foreach(_.delete_!)
-      acct.entries.foreach({
-          entry =>
-          entry.tags.foreach(_.delete_!) // Need to delete entry tags, too
-          entry.delete_!
-        })
-      acct.tags.foreach(_.delete_!)
-      acct.notes.foreach(_.delete_!)
-      acct.delete_!
+        val entries = Expense.getCollection
+
+        acct.entries foreach { entries -= }
+        Account.getCollection -= acct
     }
 
     User.currentUser.map({user =>
         user.accounts.flatMap({acct =>
             bind("acct", chooseTemplate("account", "entry", xhtml),
-                 "name" -> Text(acct.name.is),
-                 "description" -> Text(acct.description.is),
-                 "actions" -> { link("/manage", () => acct.delete_!, Text("Delete")) ++ Text(" ") ++
+                 "name" -> Text(acct.name),
+                 "description" -> Text(acct.description),
+                 "actions" -> { link("/manage", () => deleteAccount(acct), Text("Delete")) ++ Text(" ") ++
                                link("/editAcct", () => currentAccountVar(acct), Text("Edit")) })
-          })
+          }).toSeq
 			}) openOr Text("You're not logged in")
   }
 
   object currentAccountVar extends RequestVar[Account]({
-      Account.create.owner(User.currentUser.open_!)
+          new Account(User.currentUser.open_!)
     })
   def currentAccount = currentAccountVar.is
 
   def edit (xhtml : NodeSeq) : NodeSeq = {
     def doSave () = {
 
-      currentAccount.validate match {
+      Account.validate(currentAccount) match {
         case Nil =>
-          currentAccount.save
+            Account save currentAccount
           redirectTo("/manage")
         case x => error(x)
       }
@@ -63,8 +56,8 @@ class Accounts {
 
     bind("acct", xhtml,
          "id" -> hidden(() => currentAccountVar(acct)),
-         "name" -> text(currentAccount.name.is, currentAccount.name(_)),
-         "description" -> text(currentAccount.description.is, currentAccount.description(_)),
+         "name" -> text(currentAccount.name, currentAccount.name = _),
+         "description" -> text(currentAccount.description, currentAccount.description = _),
          "save" -> submit("Save", doSave))
   }
 
@@ -75,9 +68,9 @@ class Accounts {
   def detail (xhtml: NodeSeq) : NodeSeq = S.param("name") match {
     case Full(acctName) => {
         Account.findByName(User.currentUser.open_!, acctName) match {
-          case acct :: Nil => {
-              val tags = <a href={"/account/" + acct.name.is}>All tags</a> ++ Text(" ") ++
-              acct.tags.flatMap({tag => <a href={"/account/" + acct.name.is + "/" + tag.name.is}>{tag.name.is}</a> ++ Text(" ")})
+          case Full(acct) => {
+              val tags = <a href={"/account/" + acct.name}>All tags</a> ++ Text(" ") ++
+              acct.tags.flatMap({tag => <a href={"/account/" + acct.name + "/" + tag}>{tag}</a> ++ Text(" ")})
 
               // Some closure state for the Ajax calls
               var startDate : Box[Date] = Empty
@@ -86,7 +79,7 @@ class Accounts {
               val tag = S.param("tag")
 
               // Ajax utility methods. Defined here to capture the closure vars defined above
-              def entryTable = buildExpenseTable(Expense.getByAcct(acct, startDate, endDate, Empty), tag, xhtml)
+              def entryTable = buildExpenseTable(Expense.getByAcct(acct, startDate, endDate).toList, tag, xhtml)
 
               def updateGraph() = {
                 val dateClause : String = if (startDate.isDefined || endDate.isDefined) {
@@ -119,8 +112,8 @@ class Accounts {
               }
 
               bind("acct", xhtml,
-                   "name" -> acct.name.asHtml,
-                   "balance" -> acct.balance.asHtml,
+                   "name" -> Text(acct.name),
+                   "balance" -> Text(acct.balance.toString),
                    "tags" -> tags,
                    "startDate" -> SHtml.ajaxText("", updateStartDate),
                    "endDate" -> SHtml.ajaxText("", updateEndDate),
@@ -137,22 +130,22 @@ class Accounts {
   // Utility methods
   def buildExpenseTable(entries : List[Expense], tag : Box[String], template : NodeSeq) = {
     val filtered = tag match {
-      case Full(name) => entries.filter(_.tags.exists(_.name == name)) // Can probably be made more efficient
+      case Full(name) => entries.filter(_.tags.exists{name ==}) // Can probably be made more efficient
       case _ => entries
     }
 
     filtered.flatMap({ entry =>
      val desc  = 
-	if (entry.receipt.is != null) {
-	  Text(entry.description.is + " ") ++ <a href={ "/image/" + entry.id }>View receipt</a>
+	if (entry.receipt != null) {
+	  Text(entry.description + " ") ++ <a href={ "/image/" + entry.mongoOID }>View receipt</a>
 	} else {
-	  Text(entry.description.is)
+	  Text(entry.description)
 	}
 	
       bind("entry", chooseTemplate("acct", "tableEntry", template),
-	   "date" -> Text(Util.slashDate.format(entry.dateOf.is)),
+	   "date" -> Text(Util.slashDate.format(entry.dateOf)),
 	   "desc" -> desc,
-	   "tags" -> Text(entry.tags.map(_.name.is).mkString(", ")),
+	   "tags" -> Text(entry.tags.mkString(", ")),
 	   "amt" -> Text(entry.amount.toString),
 	   "balance" -> Text(entry.currentBalance.toString))
 		    })
