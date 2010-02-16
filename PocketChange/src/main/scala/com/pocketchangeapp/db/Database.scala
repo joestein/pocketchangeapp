@@ -23,7 +23,8 @@ object Database {
              fields <- m.indexes} {
 
             val indexesRequired: DBObject =
-                (fields map {i => i._1.mongoFieldName -> i._2} foldLeft Map.empty[String,Any]) {(m,f) => m + f}
+                (fields map {i => i._1.mongoFieldName -> i._2.mongoOrder}
+                    foldLeft Map.empty[String,Any]) {(m,f) => m + f}
             mongodbColl.ensureIndex( indexesRequired )
         }
     }

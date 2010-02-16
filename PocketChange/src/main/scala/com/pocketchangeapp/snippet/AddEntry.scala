@@ -91,7 +91,7 @@ class AddEntry extends StatefulSnippet {
       }
 
         bind("e", in, 
-            "account" -> select(user.editable.map(acct => (acct.mongoOID.toString, acct.name)).toSeq, Empty, oid => account = oid),
+            "account" -> select(user.editable.map(acct => (acct.id.get, acct.name)).toSeq, Empty, oid => account = oid),
             "dateOf" -> text("", date = _) % ("size" -> "10"),
             "desc" -> text("", desc = _),
             "value" -> text("", value = _),

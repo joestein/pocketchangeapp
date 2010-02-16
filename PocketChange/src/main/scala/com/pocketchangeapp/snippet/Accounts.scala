@@ -70,7 +70,7 @@ class Accounts {
         Account.findByName(User.currentUser.open_!, acctName) match {
           case Full(acct) => {
               val tags = <a href={"/account/" + acct.name}>All tags</a> ++ Text(" ") ++
-              acct.tags.flatMap({tag => <a href={"/account/" + acct.name + "/" + tag}>{tag}</a> ++ Text(" ")})
+                acct.tags.flatMap({tag => <a href={"/account/" + acct.name + "/" + tag}>{tag}</a> ++ Text(" ")})
 
               // Some closure state for the Ajax calls
               var startDate : Box[Date] = Empty

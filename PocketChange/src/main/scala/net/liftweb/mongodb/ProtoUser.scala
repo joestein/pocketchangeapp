@@ -32,14 +32,14 @@ trait MegaProtoUser extends MongoObject {
     val password = FatLazy(ProtoUser.defaultPassword)
     var uniqueId: String = ProtoUser.genUniqueId
 
-    def userIdAsString: String = mongoOID.toString
+    def userIdAsString: String = mongoOID map {_.toString} getOrElse ""
 
     var superUser: Boolean = false
     var validated: Boolean = false
     var locale: Locale = Locale.getDefault
     var timezone: TimeZone = TimeZone.getDefault
 
-    def id = mongoOID.toString
+    def id = userIdAsString
 
     def niceName: String = (firstName, lastName, email) match {
         case (f, l, e) if f.length > 1 && l.length > 1 => f+" "+l+" ("+e+")"
@@ -61,7 +61,7 @@ trait MegaProtoUser extends MongoObject {
         uniqueId = ProtoUser.genUniqueId
     }
 
-    private val salt_i = FatLazy(randomString(16))
+    val salt_i = FatLazy(randomString(16))
     private var invalidPw = false
     private var invalidMsg = ""
 
@@ -117,6 +117,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 //    object salt extends ScalarField("salt", _.salt)
     lazy val uniqueId = Field.scalar("uniqueId", _.uniqueId, (x: ModelType, v: String) => x.uniqueId = v)
     lazy val validated = Field.scalar("validated", _.validated, (x: ModelType, v: Boolean) => x.validated = v)
+    lazy val salt = Field.scalar("salt", _.salt_i.get, (x: ModelType, v: String) => x.salt_i() = v)
 
     object locale extends MongoScalar[String] with ScalarContent[String] with MappedString {
         override def displayName = localeDisplayName
@@ -155,7 +156,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     def timezoneDisplayName = ??("Time Zone")
 
-    def * = List(firstName, lastName, email, password, locale, timezone)
+    def * = List(firstName, lastName, email, password, locale, timezone, validated, uniqueId, salt)
 
     lazy val timeZoneList = TimeZone.getAvailableIDs.toList.
         filter(!_.startsWith("SystemV/")).
@@ -325,7 +326,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     def logUserIn(who: ModelType) {
         curUser.remove()
-        curUserId(Full(who.id.toString))
+        curUserId(Full(who.id))
         onLogIn.foreach(_(who))
     }
 
