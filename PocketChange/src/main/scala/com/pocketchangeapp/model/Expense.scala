@@ -125,7 +125,7 @@ class Expense(val account: Account) extends MongoObject {
 object Expense extends MongoObjectShape[Expense] with Model[Expense] {
     override val collectionName = "expense"
 
-    override val indexes = Nil
+    override val indexes: List[Seq[FieldIndex]] = List(dateOf.ascending) :: List(serialNumber.ascending) :: Nil
 
     lazy val account = Field.ref("account", Account.getCollection, _.account)
     lazy val dateOf = Field.scalar("dateOf", _.dateOf, (x: Expense, v: Date) => x.dateOf = v)
@@ -143,82 +143,28 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
     override def factory(dbo: DBObject) = for {account(acct) <- Some(dbo)} yield new Expense(acct)
 
     def getByAcct(acct: Account, startDate: Box[Date], endDate: Box[Date]) = {
+        // The method could provide a means to modify Query object as original had. The only use
+        // would be to limit query to 1 result, e.g. "query take 1"
         val clauses = Full(account is_== acct) :: startDate.map{dateOf is_>=} :: endDate.map{dateOf is_<=} :: Nil
         val query = clauses.flatMap{x => x} reduceLeft {_ and _}
         Expense where query sortBy serialNumber.descending in getCollection
     }
 
-//def getByAcct (account : Account, startDate : Box[Date], endDate : Box[Date], order : Box[OrderBy[Expense,_]], params : QueryParam[Expense]*) : List[Expense] = {
-//    // Set up some query parameters
-//    val dateClause : QueryParam[Expense] = (startDate,endDate) match {
-//      case (Full(start), Full(end)) => BySql("expense.dateOf between ? and ?",
-//					     IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-//					     start, end)
-//      case (Full(start), Empty) => BySql("expense.dateOf >= ?",
-//					 IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-//					 start)
-//      case (Empty, Full(end)) => BySql("expense.dateOf <= ?",
-//				       IHaveValidatedThisSQL("dchenbecker", "2009-10-08"),
-//				       end)
-//      case _ => new Ignore[Expense]
-//    }
-//
-//    val entryOrder : QueryParam[Expense] = order openOr OrderBy(Expense.serialNumber, Descending)
-//
-//
-//    Expense.findAll((By(Expense.account, account.id) :: dateClause :: entryOrder :: params.toList).toSeq : _*)
-//  }
-
+    // returns the serial and balance of the last entry before this one
     def getLastExpenseData(acct: Account, date: Date): (Long, Double) = getByAcct(acct, Empty, Full(date)).headOption match {
         case Some(expense) => (expense.serialNumber, expense.currentBalance)
         case _ => (0, 0)
     }
 
-//  // returns the serial and balance of the last entry before this one
-//  def getLastExpenseData (acct : Account, date : Date) : (Long,BigDecimal) = {
-//    // Find the last entry on or before the given date
-//    val results = getByAcct(acct, Empty, Full(date), Empty, MaxRows(1))
-//
-//    results match {
-//      case entry :: Nil => (entry.serialNumber.is, entry.currentBalance.is)
-//      case Nil => (0,BigDecimal(0))
-//      case _ => throw new Exception("Invalid prior entry query results") // TODO: handle this better
-//    }
-//  }
-//
-//  val updateString = String.format("update %s set %s = %s + 1, %s = %s + ? where %s >= ?",
-//				   Expense.dbTableName,
-//				   Expense.serialNumber.dbColumnName,
-//				   Expense.serialNumber.dbColumnName,
-//				   Expense.currentBalance.dbColumnName,
-//				   Expense.currentBalance.dbColumnName,
-//				   Expense.serialNumber.dbColumnName)
-//
-//  /**
-//   * This method should be called before inserting the new serial number or else you'll get
-//   * a duplicate serial
-//   */
+  /**
+   * This method should be called before inserting the new serial number or else you'll get
+   * a duplicate serial
+   */
     def updateEntries(serial: Long, amount: Double) {
+        // Wonderfully concise compared to the original
         val c = getCollection
         c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount)
     }
 
-//  def updateEntries (serial : Long, amount : BigDecimal) = {
-//    // Simpler to do a bulk update via SQL, unfortunately
-//    DB.use(DefaultConnectionIdentifier) { conn =>
-//	DB.prepareStatement(updateString, conn) { stmt =>
-//	  // pass in the underlying java BigDecimal
-//	  stmt.setBigDecimal(1, amount.bigDecimal)
-//	  stmt.setLong(2, serial)
-//	  stmt.executeUpdate()
-//	}
-//    }
-//  }
-
     def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
-
-//  def findTagExpenses (search : String) : List[Expense] =
-//    findAll(In(ExpenseTag.tag,
-//	       Tag.id,
-//	       Like(Tag.name, search))).map(_.expense.obj.open_!).removeDuplicates
 }

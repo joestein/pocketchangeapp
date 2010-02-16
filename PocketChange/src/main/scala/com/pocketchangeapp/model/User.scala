@@ -25,18 +25,10 @@ object User extends MetaMegaProtoUser[User] with Model[User] {
     override val collectionName = "user"
     override val indexes = Nil
 
-    override lazy val * = super.*
-
     override def factory(dbo: DBObject) = Some(create)
 
     // Access methods, calling collection
     override def create = new User
-
-    override def save(u: User) {
-        getCollection += u
-    }
-
-    override def one(q: ShapeQuery): Box[User] = (q in getCollection).firstOption
 
     // Just for testing purposes. In production we remove this
     override def skipEmailValidation = true
@@ -44,7 +36,4 @@ object User extends MetaMegaProtoUser[User] with Model[User] {
     // Spruce up the forms a bit
     override def screenWrap =
         Full(<lift:surround with="default" at="content"><div id="formBox"><lift:bind /></div></lift:surround>)
-
-    // define the order fields will appear in forms and output
-    //override def fieldOrder = id :: firstName :: lastName :: email :: password :: Nil
 }

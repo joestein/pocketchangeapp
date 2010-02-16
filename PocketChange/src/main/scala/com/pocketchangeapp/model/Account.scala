@@ -33,7 +33,7 @@ class Account(val owner: User) extends MongoObject {
 object Account extends MongoObjectShape[Account] with Model[Account] { account =>
     override val collectionName = "account"
     
-    override val indexes = List(name.ascending) :: Nil
+    override val indexes: List[Seq[FieldIndex]] = List(name.ascending) :: Nil
 
     lazy val owner = Field.ref("owner", User.getCollection, _.owner)
     lazy val name = Field.scalar("name", _.name, (x: Account, v: String) => x.name = v)
