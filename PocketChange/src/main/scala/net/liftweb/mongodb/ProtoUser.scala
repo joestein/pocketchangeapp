@@ -110,6 +110,14 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     object password extends ScalarField[String]("password", _.password.get, Some((x: ModelType, v: String) => x.password() = v)) with MappedString {
         override def displayName = passwordDisplayName
+        
+        override def _toForm(obj: ModelType): Box[NodeSeq] =
+            S.fmapFunc({s: List[String] => setFromAny(obj, s)}){funcName =>
+                Full(<span><input id={fieldId} type='password' name={funcName}
+                    value={rep.get(obj) map { _.toString } getOrElse ""}/>&nbsp;{S.??("repeat")}&nbsp;<input
+                    type='password' name={funcName} lift:gc={funcName}
+                    value={rep.get(obj) map { _.toString } getOrElse ""}/></span>)
+            }
     }
 
     def passwordDisplayName = ??("Password")
@@ -129,13 +137,6 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
                 x.locale = (for {l <- a.toSeq
                                  x <- Locale.getAvailableLocales
                                  if x.toString == l} yield x).firstOption getOrElse Locale.getDefault
-
-//                x.locale = a map {l =>
-//                        Locale.getAvailableLocales.filter(_.toString == l).toList match {
-//                            case Nil => Locale.getDefault
-//                            case x :: xs => x
-//                        }
-//                    } getOrElse Locale.getDefault
             }
         }
     }
@@ -310,8 +311,6 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
              MenuItem(S.??("log.out"), logoutPath, true),
              MenuItem(S.??("edit.profile"), editPath, true),
              MenuItem("", validateUserPath, false))
-
-    // def requestLoans: List[LoanWrapper] = Nil // List(curUser)
 
     var onLogIn: List[ModelType => Unit] = Nil
 
@@ -647,14 +646,6 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         flatMap { f =>
             f.toForm(user).toList map { form =>
                 (<tr><td>{f.displayName}</td><td>{form}</td></tr>) } }
-//        map(fi => getSingleton.getActualBaseField(user, fi)).
-//        filter(f => !ignorePassword || (f match {
-//                case f: MappedPassword[ModelType] => false
-//                case _ => true
-//            })).
-//        flatMap(f =>
-//            f.toForm.toList.map(form =>
-//                (<tr><td>{f.displayName}</td><td>{form}</td></tr>) ) )
     }
 
     protected def wrapIt(in: NodeSeq): NodeSeq =

@@ -163,7 +163,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
     def updateEntries(serial: Long, amount: BigDecimal) {
         // Wonderfully concise compared to the original
         val c = getCollection
-        c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount)
+        c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount) // "inc" will take care of amount serialization
     }
 
     def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
