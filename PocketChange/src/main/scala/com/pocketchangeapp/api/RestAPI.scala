@@ -81,7 +81,7 @@ object RestAPI extends XMLApiHelper{
     var tempPass = ""
     var tempAccountName = ""
     var tempDateOf: java.util.Date = null
-    var tempAmount = 0F
+    var tempAmount: BigDecimal = 0
     var tempDescription = ""
 
     req.xml match {
@@ -91,7 +91,7 @@ object RestAPI extends XMLApiHelper{
           case <password>{password}</password> => tempPass = password.text
           case <accountName>{name}</accountName> => tempAccountName = name.text
           case <dateOf>{dateof}</dateOf> => tempDateOf = new java.util.Date(dateof.text)
-          case <amount>{value}</amount> => tempAmount = value.text.toFloat
+          case <amount>{value}</amount> => tempAmount = BigDecimal(value.text).setScale(2, BigDecimal.RoundingMode.ROUND_FLOOR)
           case <desc>{description}</desc> => tempDescription = description.text
           case _ =>
         }

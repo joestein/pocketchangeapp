@@ -27,8 +27,8 @@ class Expense(val account: Account) extends MongoObject {
     var dateOf: Date = _
     var serialNumber: Long = 0
     // TODO: BigDecimal
-    var currentBalance: Double = 0.0
-    var amount: Double = 0.0
+    var currentBalance: BigDecimal = 0
+    var amount: BigDecimal = 0
     var description: String = ""
     var notes: Option[String] = None
     // TODO: receipt: GridFS
@@ -122,7 +122,7 @@ class Expense(val account: Account) extends MongoObject {
         }
 }
 
-object Expense extends MongoObjectShape[Expense] with Model[Expense] {
+object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDecimalFields[Expense,Expense] {
     override val collectionName = "expense"
 
     override val indexes: List[Seq[FieldIndex]] = List(dateOf.ascending) :: List(serialNumber.ascending) :: Nil
@@ -130,8 +130,8 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
     lazy val account = Field.ref("account", Account.getCollection, _.account)
     lazy val dateOf = Field.scalar("dateOf", _.dateOf, (x: Expense, v: Date) => x.dateOf = v)
     lazy val serialNumber = Field.scalar("serialNumber", _.serialNumber, (x: Expense, v: Long) => x.serialNumber = v)
-    lazy val currentBalance = Field.scalar("currentBalance", _.currentBalance, (x: Expense, v: Double) => x.currentBalance = v)
-    lazy val amount = Field.scalar("amount", _.amount, (x: Expense, v: Double) => x.amount = v)
+    object currentBalance extends BigDecimalField("currentBalance", _.currentBalance, Some((x: Expense, v: BigDecimal) => x.currentBalance = v))
+    object amount extends BigDecimalField("amount", _.amount, Some((x: Expense, v: BigDecimal) => x.amount = v))
     lazy val description = Field.scalar("description", _.description, (x: Expense, v: String) => x.description = v)
     lazy val notes = Field.optional("notes", _.notes, (x: Expense, v: Option[String]) => x.notes = v)
 //    var receipt: // should be GridFS
@@ -151,7 +151,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
     }
 
     // returns the serial and balance of the last entry before this one
-    def getLastExpenseData(acct: Account, date: Date): (Long, Double) = getByAcct(acct, Empty, Full(date)).headOption match {
+    def getLastExpenseData(acct: Account, date: Date): (Long, BigDecimal) = getByAcct(acct, Empty, Full(date)).headOption match {
         case Some(expense) => (expense.serialNumber, expense.currentBalance)
         case _ => (0, 0)
     }
@@ -160,7 +160,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] {
    * This method should be called before inserting the new serial number or else you'll get
    * a duplicate serial
    */
-    def updateEntries(serial: Long, amount: Double) {
+    def updateEntries(serial: Long, amount: BigDecimal) {
         // Wonderfully concise compared to the original
         val c = getCollection
         c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount)

@@ -37,7 +37,7 @@ class AddEntry extends StatefulSnippet {
             /* Get the date correctly, add the datepicker: comes in as yyyy/mm/dd */
             val entryDate = Util.slashDate.parse(date)
 
-            val amount = value.toFloat
+            val amount = BigDecimal(value).setScale(2, BigDecimal.RoundingMode.ROUND_FLOOR)
 
             // Rework to not throw exceptions
             val currentAccount = Account.byId(account).get
@@ -49,7 +49,7 @@ class AddEntry extends StatefulSnippet {
           e.dateOf = entryDate
           e.serialNumber = entrySerial + 1
           e.description = desc
-          e.amount = value.toFloat
+          e.amount = amount
           e.tags(tags)
           e.currentBalance = entryBalance + amount
 

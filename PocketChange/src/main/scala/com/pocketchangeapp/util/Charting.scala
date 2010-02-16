@@ -47,7 +47,7 @@ object Charting {
 				      Util.getDateParam("end", Util.noSlashDate.parse))
 
     val serialMap = new HashMap[String,Long]()
-    val dateMap = new HashMap[String,Double]() // BigDecimal
+    val dateMap = new HashMap[String,BigDecimal]()
     
     // Iterate over entries to find the last entry (and balance) for each date
     // It would be more efficient to just do this in SQL with a self-join, but then we wouldn't be using mapper...
@@ -75,13 +75,13 @@ object Charting {
 				    Util.getDateParam("start", Util.noSlashDate.parse),
 				    Util.getDateParam("end", Util.noSlashDate.parse))
     
-    val tagMap = new HashMap[String,Double] // BigDecimal
+    val tagMap = new HashMap[String,BigDecimal]
 
     val zero = BigDecimal(0)
 
     entries.foreach({ entry =>
       entry.tags.foreach { 
-	tag => tagMap += tag -> (tagMap.getOrElse(tag, 0.0) + entry.amount)
+	tag => tagMap += tag -> (tagMap.getOrElse(tag, zero) + entry.amount)
       }
     })
 

@@ -20,7 +20,7 @@ class Account(val owner: User) extends MongoObject {
     var viewers: List[User] = Nil
     var externalAccount: Option[String] = None
     var is_public: Boolean = false
-    var balance: Double = 0.0
+    var balance: BigDecimal = 0
     var notes: List[String] = Nil
 
     def id = mongoOID.map{_.toString}
@@ -30,7 +30,7 @@ class Account(val owner: User) extends MongoObject {
     def addAdmin(user: User) { admins ::= user }
 }
 
-object Account extends MongoObjectShape[Account] with Model[Account] { account =>
+object Account extends MongoObjectShape[Account] with Model[Account] with BigDecimalFields[Account,Account]  { account =>
     override val collectionName = "account"
     
     override val indexes: List[Seq[FieldIndex]] = List(name.ascending) :: Nil
@@ -42,8 +42,7 @@ object Account extends MongoObjectShape[Account] with Model[Account] { account =
     lazy val viewers = Field.arrayRef("viewers", User.getCollection, _.viewers, (x: Account, l: Seq[User]) => x.viewers = l.toList)
     lazy val externalAccount = Field.optional("external", _.externalAccount, (x: Account, v: Option[String]) => x.externalAccount = v)
     lazy val is_public = Field.scalar("public", _.is_public, (x: Account, v: Boolean) => x.is_public = v)
-    // TODO: custom type balance is BigDecimal
-    lazy val balance = Field.scalar("balance", _.balance, (x: Account, v: Double) => x.balance = v)
+    object balance extends BigDecimalField("balance", _.balance, Some((x: Account, v: BigDecimal) => x.balance = v))
     lazy val notes = Field.array("notes", _.notes, (x: Account, l: Seq[String]) => x.notes = l.toList )
     
     lazy val * = List(owner, name, description, admins, viewers, externalAccount, is_public, balance, notes)
