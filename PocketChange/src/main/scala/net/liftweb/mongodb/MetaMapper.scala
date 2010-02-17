@@ -20,34 +20,54 @@ trait MetaMapper[T] { self: ObjectShape[T] =>
 
     def one(q: ShapeQuery): Box[T]
 
-    def all(qt: QueryTerm[T])
+    def all(qt: QueryTerm[T]): Iterable[T]
 
-    def all(q: ShapeQuery)
+    def all(q: ShapeQuery): Iterable[T]
 
-    def validate(obj: T): List[FieldError] = Nil
+    def validation: List[T => List[FieldError]] = Nil
+    
+    def validate(obj: T): List[FieldError] =
+        fieldList.flatMap {
+            case f: MappedField[_] => f.validate(obj)
+            case _ => Nil
+        } ::: validation.flatMap {
+            case pf: PartialFunction[T, List[FieldError]] =>
+                if (pf.isDefinedAt(obj)) pf(obj)
+                else Nil
+            case f => f(obj)
+        }
 
-    trait MappedField[A] extends FieldIdentifier { field: MongoField[A] =>
+    trait MappedField[A] extends FieldIdentifier { field: MongoScalar[A] =>
         /**
          * A unique 'id' for the field for form generation
          */
         def fieldId: Option[NodeSeq] = None
 
-        override def uniqueFieldId = Full(mongoFieldName)
+        override def uniqueFieldId = Empty // TODO (requires displaying field errors): Full(mongoFieldName)
 
         /**
          * The display name of this field (e.g., "First Name")
          */
         def displayName: String
 
+        def validations: List[A => List[FieldError]] = Nil
+
         /**
          * Validate this field and return a list of Validation Issues
          */
-        def validate(value: A): List[FieldError] = Nil
+        def validate(obj: T): List[FieldError] = rep.get(obj) map { cv =>
+            validations.flatMap {
+                case pf: PartialFunction[A, List[FieldError]] =>
+                    if (pf.isDefinedAt(cv)) pf(cv)
+                    else Nil
+                case f => f(cv)
+            }
+        } getOrElse Nil
 
         /**
          * Attempt to figure out what the incoming value is and set the field to that value.
          */
-        def setFromAny(obj: T, in: Any): A
+        def setFromAny(obj: T, in: Any): Boolean
 
         def toFormAppendedAttributes: MetaData =
             if (Props.mode == Props.RunModes.Test)
@@ -78,15 +98,15 @@ trait MetaMapper[T] { self: ObjectShape[T] =>
     }
 
     trait MappedString extends MappedField[String] { field: MongoScalar[String] =>
-        def setFromAny(obj: T, in: Any) = in match {
-            case seq: Seq[_] if !seq.isEmpty => seq.map(x => setFromAny(obj,x))(0)
-            case (s: String) :: _ => rep.put(obj)(Some(s)); s
-            case null => rep.put(obj)(None); null
-            case s: String => rep.put(obj)(Some(s)); s
-            case Some(s: String) => rep.put(obj)(Some(s)); s
-            case Full(s: String) => rep.put(obj)(Some(s)); s
-            case None | Empty | Failure(_, _, _) => rep.put(obj)(None); null
-            case o => rep.put(obj)(Some(o.toString)); o.toString
+        def setFromAny(obj: T, in: Any): Boolean = in match {
+            case seq: Seq[_] if !seq.isEmpty => seq.map(x => setFromAny(obj,x))(0); true
+            case (s: String) :: _ => rep.put(obj)(Some(s)); true
+            case null => rep.put(obj)(None); false
+            case s: String => rep.put(obj)(Some(s)); true
+            case Some(s: String) => rep.put(obj)(Some(s)); true
+            case Full(s: String) => rep.put(obj)(Some(s)); true
+            case None | Empty | Failure(_, _, _) => rep.put(obj)(None); false
+            case o => rep.put(obj)(Some(o.toString)); true
         }
     }
 }

@@ -29,7 +29,7 @@ trait Model[T] extends MetaMapper[T] { shape: ObjectShape[T] =>
 
     def one(q: ShapeQuery): Box[T] = (shape where q in getCollection).firstOption
 
-    def all(qt: QueryTerm[T]) = shape where qt in getCollection
+    def all(qt: QueryTerm[T]): Iterable[T] = shape where qt in getCollection
 
-    def all(q: ShapeQuery) = shape where q in getCollection
+    def all(q: ShapeQuery): Iterable[T] = shape where q in getCollection
 }
