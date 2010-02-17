@@ -6,35 +6,41 @@ package com.pocketchangeapp.model
 
 import _root_.java.math.MathContext
 import _root_.java.util.Date
-
-import com.mongodb.DBObject
-import com.pocketchangeapp.db._
-import com.osinka.mongodb._
-import com.osinka.mongodb.shape._
-import _root_.scala.xml.Text
-
-import _root_.net.liftweb.util.Helpers._
-import _root_.net.liftweb.util.{Box,Empty,Full}
-import _root_.net.liftweb.mongodb.MetaMapper
+import _root_.java.text.{DateFormat,SimpleDateFormat}
 
 import scala.xml.{NodeSeq,Text}
 
-import _root_.java.text.{DateFormat,SimpleDateFormat}
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.mongodb._
+import Helpers._
 
+import com.mongodb.{ObjectId,DBObject}
+import com.osinka.mongodb._
+import com.osinka.mongodb.shape._
+
+import com.pocketchangeapp.db._
 import com.pocketchangeapp.util.Util
 
-class Expense(val account: Account) extends MongoObject {
+class Expense(val account: Account) extends MongoObject with EasyID {
     var dateOf: Date = _
     var serialNumber: Long = 0
-    // TODO: BigDecimal
     var currentBalance: BigDecimal = 0
     var amount: BigDecimal = 0
     var description: String = ""
     var notes: Option[String] = None
-    // TODO: receipt: GridFS
-    var receipt = new Array[Byte](0) // should be GridFS
-    var receiptMime = ""
+    var receipt: Option[ObjectId] = None
     var tags: List[String] = Nil
+
+    def uploadReceipt(mime: String, fileName: String, data: Array[Byte]) {
+        Log.debug("receipt uploaded "+fileName)
+        receipt = Some(Database.saveBinary(mime, fileName, data))
+    }
+
+    def getReceipt = receipt flatMap Database.getBinary
+
+    def removeReceipt {
+        receipt foreach Database.removeBinary
+    }
 
     def accountName = Text("My account is " + account.name)
 
@@ -134,11 +140,10 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
     object amount extends BigDecimalField("amount", _.amount, Some((x: Expense, v: BigDecimal) => x.amount = v))
     lazy val description = Field.scalar("description", _.description, (x: Expense, v: String) => x.description = v)
     lazy val notes = Field.optional("notes", _.notes, (x: Expense, v: Option[String]) => x.notes = v)
-//    var receipt: // should be GridFS
-//    var receiptMime: Option[String] = None
+    lazy val receipt = Field.optional("receipt", _.receipt, (x: Expense, v: Option[ObjectId]) => x.receipt = v)
     lazy val tags = Field.array("tags", _.tags, (x: Expense, l: Seq[String]) => x.tags = l.toList )
 
-    lazy val * = List(account, dateOf, serialNumber, currentBalance, amount, description, notes, tags)
+    lazy val * = List(account, dateOf, serialNumber, currentBalance, amount, description, notes, tags, receipt)
 
     override def factory(dbo: DBObject) = for {account(acct) <- Some(dbo)} yield new Expense(acct)
 

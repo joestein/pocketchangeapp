@@ -12,6 +12,7 @@ import SHtml._
 import scala.xml._
 import Helpers._
 
+import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.util.Util
 
@@ -21,7 +22,10 @@ class Accounts {
     def deleteAccount (acct : Account) {
         val entries = Expense.getCollection
 
-        acct.entries foreach { entries -= }
+        for {expense <- acct.entries} {
+            expense.removeReceipt
+            entries -= expense
+        }
         Account.getCollection -= acct
     }
 
@@ -136,8 +140,8 @@ class Accounts {
 
     filtered.flatMap({ entry =>
      val desc  = 
-	if (entry.receipt != null) {
-	  Text(entry.description + " ") ++ <a href={ "/image/" + entry.mongoOID }>View receipt</a>
+	if (entry.receipt != None) {
+	  Text(entry.description + " ") ++ <a href={ "/image/" + entry.id }>View receipt</a>
 	} else {
 	  Text(entry.description)
 	}

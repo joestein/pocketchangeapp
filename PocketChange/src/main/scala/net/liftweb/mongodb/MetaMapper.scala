@@ -43,7 +43,7 @@ trait MetaMapper[T] { self: ObjectShape[T] =>
          */
         def fieldId: Option[NodeSeq] = None
 
-        override def uniqueFieldId = Empty // TODO (requires displaying field errors): Full(mongoFieldName)
+        override def uniqueFieldId = Empty // TODO: (requires displaying field errors): Full(mongoFieldName)
 
         /**
          * The display name of this field (e.g., "First Name")

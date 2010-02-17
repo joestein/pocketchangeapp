@@ -26,21 +26,19 @@ object ProtoUser {
     def genUniqueId = randomString(uniqueIdLen)
 }
 
-trait MegaProtoUser extends MongoObject {
+trait MegaProtoUser extends MongoObject with EasyID {
     var firstName: String = ""
     var lastName: String = ""
     var email: String = ""
     val password = FatLazy(ProtoUser.defaultPassword)
     var uniqueId: String = ProtoUser.genUniqueId
 
-    def userIdAsString: String = mongoOID map {_.toString} getOrElse ""
+    def userIdAsString: String = id
 
     var superUser: Boolean = false
     var validated: Boolean = false
     var locale: Locale = Locale.getDefault
     var timezone: TimeZone = TimeZone.getDefault
-
-    def id = userIdAsString
 
     def niceName: String = (firstName, lastName, email) match {
         case (f, l, e) if f.length > 1 && l.length > 1 => f+" "+l+" ("+e+")"

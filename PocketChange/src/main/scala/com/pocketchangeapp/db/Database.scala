@@ -1,19 +1,22 @@
 package com.pocketchangeapp.db
 
-import net.liftweb.util.LoanWrapper
-import com.mongodb._
-import com.pocketchangeapp.model._
-import com.osinka.mongodb._
+import _root_.net.liftweb.util._
+import _root_.com.mongodb._
+import _root_.com.mongodb.gridfs._
+import _root_.com.pocketchangeapp.model._
+import _root_.com.osinka.mongodb._
 import Preamble._
 
 object Database {
-    val Host = "localhost"
-    val Port = 27017
-    val Name = "pocketchange"
+    val Host       = "localhost"
+    val Port       = 27017
+    val Name       = "pocketchange"
+    val GridBucket = "receipts"
 
     val Models = Account :: Expense :: Nil
 
     lazy val mongo = new Mongo(Host, Port).getDB(Name)
+    lazy val gridFS = new GridFS(mongo)
 
     def getCollection(name: String) = mongo.getCollection(name)
 
@@ -38,4 +41,16 @@ object Database {
                 mongo.requestDone()
             }
     }
+
+    def getBinary(oid: ObjectId) = Helpers.tryo(gridFS.find(oid))
+
+    def saveBinary(mime: String, fileName: String, data: Array[Byte]) = {
+        val file = gridFS.createFile(data)
+        file.setContentType(mime)
+        file.setFilename(fileName)
+        file.save
+        file.getId.asInstanceOf[ObjectId]
+    }
+
+    def removeBinary(oid: ObjectId) { gridFS.remove(oid) }
 }

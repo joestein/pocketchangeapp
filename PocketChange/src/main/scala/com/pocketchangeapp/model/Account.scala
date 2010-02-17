@@ -6,14 +6,14 @@ package com.pocketchangeapp.model
 
 import _root_.java.math.MathContext
 import _root_.net.liftweb.util._
-import _root_.net.liftweb.mongodb.MetaMapper
+import _root_.net.liftweb.mongodb._
 
 import com.pocketchangeapp.db._
 import com.mongodb.DBObject
 import com.osinka.mongodb._
 import com.osinka.mongodb.shape._
 
-class Account(val owner: User) extends MongoObject {
+class Account(val owner: User) extends MongoObject with EasyID {
     var name: String = ""
     var description: String = ""
     var admins: List[User] = Nil
@@ -22,8 +22,6 @@ class Account(val owner: User) extends MongoObject {
     var is_public: Boolean = false
     var balance: BigDecimal = 0
     var notes: List[String] = Nil
-
-    def id = mongoOID.map{_.toString}
 
     def tags = entries flatMap { _.tags }
     def entries = Expense.getByAcct(this, Empty, Empty)

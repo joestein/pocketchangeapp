@@ -9,6 +9,7 @@ import SHtml._
 import scala.xml._
 import Helpers._
 
+import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.util.Util
 
@@ -54,13 +55,11 @@ class AddEntry extends StatefulSnippet {
           e.currentBalance = entryBalance + amount
 
 	  // Add the optional receipt if it's the correct type
-          val receiptOk = true
-          /*
 	  val receiptOk = fileHolder match {
 	    case Full(FileParamHolder(_, null, _, _)) => true
-	    case Full(FileParamHolder(_, mime, _, data)) 
+	    case Full(FileParamHolder(_, mime, fileName, data))
 		      if mime.startsWith("image/") => {
-			e.receipt(data).receiptMime(mime)
+			e.uploadReceipt(mime, fileName, data)
 			true
 		      }
 	    // If someone sends nothing...
@@ -72,7 +71,6 @@ class AddEntry extends StatefulSnippet {
 	    }
 	    case _ => true
 	  }
-          */
 	      
 	  (Expense.validate(e),receiptOk) match {
             case (Nil,true) => {
@@ -91,7 +89,7 @@ class AddEntry extends StatefulSnippet {
       }
 
         bind("e", in, 
-            "account" -> select(user.editable.map(acct => (acct.id.get, acct.name)).toSeq, Empty, oid => account = oid),
+            "account" -> select(user.editable.map(acct => (acct.id, acct.name)).toSeq, Empty, oid => account = oid),
             "dateOf" -> text("", date = _) % ("size" -> "10"),
             "desc" -> text("", desc = _),
             "value" -> text("", value = _),
