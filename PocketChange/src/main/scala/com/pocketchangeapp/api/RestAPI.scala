@@ -91,7 +91,7 @@ object RestAPI extends XMLApiHelper{
           case <password>{password}</password> => tempPass = password.text
           case <accountName>{name}</accountName> => tempAccountName = name.text
           case <dateOf>{dateof}</dateOf> => tempDateOf = new java.util.Date(dateof.text)
-          case <amount>{value}</amount> => tempAmount = BigDecimal(value.text).setScale(2, BigDecimal.RoundingMode.ROUND_FLOOR)
+          case <amount>{value}</amount> => tempAmount = Expense.amount.fromString(value.text)
           case <desc>{description}</desc> => tempDescription = description.text
           case _ =>
         }

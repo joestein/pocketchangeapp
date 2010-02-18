@@ -24,8 +24,8 @@ import com.pocketchangeapp.util.Util
 class Expense(val account: Account) extends MongoObject with EasyID {
     var dateOf: Date = _
     var serialNumber: Long = 0
-    var currentBalance: BigDecimal = 0
-    var amount: BigDecimal = 0
+    var currentBalance: BigDecimal = Expense.currentBalance.zero
+    var amount: BigDecimal = Expense.amount.zero
     var description: String = ""
     var notes: Option[String] = None
     var receipt: Option[ObjectId] = None
@@ -136,8 +136,8 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
     lazy val account = Field.ref("account", Account.getCollection, _.account)
     lazy val dateOf = Field.scalar("dateOf", _.dateOf, (x: Expense, v: Date) => x.dateOf = v)
     lazy val serialNumber = Field.scalar("serialNumber", _.serialNumber, (x: Expense, v: Long) => x.serialNumber = v)
-    object currentBalance extends BigDecimalField("currentBalance", _.currentBalance, Some((x: Expense, v: BigDecimal) => x.currentBalance = v))
-    object amount extends BigDecimalField("amount", _.amount, Some((x: Expense, v: BigDecimal) => x.amount = v))
+    object currentBalance extends BigDecimalField("currentBalance", 2, _.currentBalance, Some((x: Expense, v: BigDecimal) => x.currentBalance = v))
+    object amount extends BigDecimalField("amount", 2, _.amount, Some((x: Expense, v: BigDecimal) => x.amount = v))
     lazy val description = Field.scalar("description", _.description, (x: Expense, v: String) => x.description = v)
     lazy val notes = Field.optional("notes", _.notes, (x: Expense, v: Option[String]) => x.notes = v)
     lazy val receipt = Field.optional("receipt", _.receipt, (x: Expense, v: Option[ObjectId]) => x.receipt = v)

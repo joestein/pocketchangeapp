@@ -20,7 +20,7 @@ class Account(val owner: User) extends MongoObject with EasyID {
     var viewers: List[User] = Nil
     var externalAccount: Option[String] = None
     var is_public: Boolean = false
-    var balance: BigDecimal = 0
+    var balance: BigDecimal = Account.balance.zero
     var notes: List[String] = Nil
 
     def tags = entries flatMap { _.tags }
@@ -40,7 +40,7 @@ object Account extends MongoObjectShape[Account] with Model[Account] with BigDec
     lazy val viewers = Field.arrayRef("viewers", User.getCollection, _.viewers, (x: Account, l: Seq[User]) => x.viewers = l.toList)
     lazy val externalAccount = Field.optional("external", _.externalAccount, (x: Account, v: Option[String]) => x.externalAccount = v)
     lazy val is_public = Field.scalar("public", _.is_public, (x: Account, v: Boolean) => x.is_public = v)
-    object balance extends BigDecimalField("balance", _.balance, Some((x: Account, v: BigDecimal) => x.balance = v))
+    object balance extends BigDecimalField("balance", 2, _.balance, Some((x: Account, v: BigDecimal) => x.balance = v))
     lazy val notes = Field.array("notes", _.notes, (x: Account, l: Seq[String]) => x.notes = l.toList )
     
     lazy val * = List(owner, name, description, admins, viewers, externalAccount, is_public, balance, notes)
