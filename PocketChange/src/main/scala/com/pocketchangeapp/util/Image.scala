@@ -12,15 +12,21 @@ import com.pocketchangeapp.model._
 
 object Image {
     def viewImage(id : String) : LiftResponse = {
-        def imageResponse(image: GridFSDBFile) = {
-            val os = new java.io.ByteArrayOutputStream
-            image.writeTo(os)
-            // TODO: streaming response
-//            StreamingResponse(image.getInputStream,
-//                              () => Log.info("File "+image.getFilename+" returned"),
-//                              image.getLength,
-//                              List("Content-Type" -> image.getContentType), Nil, 200)
-            InMemoryResponse(os.toByteArray, List("Content-Type" -> image.getContentType), Nil, 200)
+        def bufferedResponse(image: GridFSDBFile) = {
+            val buffer = new java.io.ByteArrayOutputStream
+            image.writeTo(buffer)
+            InMemoryResponse(buffer.toByteArray, List("Content-Type" -> image.getContentType), Nil, 200)
+        }
+
+        def streamingResponse(image: GridFSDBFile) = {
+            val streamProxy = new AnyRef {
+                    private val s = image.getInputStream
+                    def read(bytes: Array[Byte]) = s.read(bytes)
+                }
+            def whenComplete { }
+
+            StreamingResponse(streamProxy, whenComplete _, image.getLength,
+                              List("Content-Type" -> image.getContentType), Nil, 200)
         }
 
         User.currentUser match {
@@ -28,7 +34,8 @@ object Image {
                 Expense.byId(id) match {
                     case Full(e) if Full(e.owner) != User.currentUser => ForbiddenResponse()
                     case Full(e) =>
-                        e.getReceipt map imageResponse getOrElse PlainTextResponse("Receipt has not been found", Nil, 404)
+                        // can use either bufferedResponse or streamingResponse
+                        e.getReceipt map streamingResponse getOrElse PlainTextResponse("Receipt has not been found", Nil, 404)
                     case _ => PlainTextResponse("No such expense item", Nil, 404)
                 }
             case _ => RedirectResponse("/user_mgt/login")
