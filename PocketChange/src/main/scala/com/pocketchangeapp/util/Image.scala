@@ -11,6 +11,10 @@ import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
 
 object Image {
+    /* Generally using nginx-gridfs would be much more appropriate.
+     * See http://github.com/mdirolf/nginx-gridfs
+     * However, as of writing this mongo-gridfs supports querying by
+     * filename only -- I would like to query by oid */
     def viewImage(id : String) : LiftResponse = {
         def bufferedResponse(image: GridFSDBFile) = {
             val buffer = new java.io.ByteArrayOutputStream
