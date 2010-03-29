@@ -182,7 +182,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
 
     def timezoneDisplayName = ??("Time Zone")
 
-    override def * = List(validated, uniqueId, salt, firstName, lastName, email, password, locale, timezone)
+    override def * : List[MongoField[_]] = List(validated, uniqueId, salt, firstName, lastName, email, password, locale, timezone)
 
     lazy val timeZoneList = TimeZone.getAvailableIDs.toList.
         filter(!_.startsWith("SystemV/")).
