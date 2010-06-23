@@ -14,7 +14,8 @@ import _root_.net.liftweb.util._
 import _root_.net.liftweb.mongodb._
 import Helpers._
 
-import com.mongodb.{ObjectId,DBObject}
+import org.bson.types.ObjectId
+import com.mongodb.DBObject
 import com.osinka.mongodb._
 import com.osinka.mongodb.shape._
 

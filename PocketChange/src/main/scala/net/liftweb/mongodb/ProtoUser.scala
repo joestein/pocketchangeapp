@@ -13,7 +13,7 @@ import js._
 import JsCmds._
 import S._
 
-import _root_.com.mongodb.ObjectId
+import _root_.org.bson.types.ObjectId
 import _root_.com.osinka.mongodb._
 import _root_.com.osinka.mongodb.shape._
 import Preamble._

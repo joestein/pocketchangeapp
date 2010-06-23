@@ -3,7 +3,7 @@ package com.pocketchangeapp.db
 import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.mongodb.MetaMapper
-import _root_.com.mongodb.ObjectId
+import _root_.org.bson.types.ObjectId
 import _root_.com.osinka.mongodb._
 import _root_.com.osinka.mongodb.shape._
 import Preamble._

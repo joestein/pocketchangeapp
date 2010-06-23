@@ -5,7 +5,7 @@ import _root_.net.liftweb.http._
 import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.util._
 import S._
-import _root_.com.mongodb.ObjectId
+import _root_.org.bson.types.ObjectId
 import _root_.com.osinka.mongodb.shape._
 
 trait MetaMapper[T] { self: ObjectShape[T] =>

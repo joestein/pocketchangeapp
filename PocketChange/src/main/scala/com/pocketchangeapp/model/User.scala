@@ -3,7 +3,8 @@ package com.pocketchangeapp.model
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.mongodb._
 
-import com.mongodb.{DBObject,ObjectId}
+import org.bson.types.ObjectId
+import com.mongodb.DBObject
 import com.pocketchangeapp.db._
 import com.osinka.mongodb._
 import com.osinka.mongodb.shape._

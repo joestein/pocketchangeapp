@@ -4,6 +4,7 @@ import _root_.net.liftweb.util._
 import _root_.com.mongodb._
 import _root_.com.mongodb.gridfs._
 import _root_.com.pocketchangeapp.model._
+import _root_.org.bson.types.ObjectId
 import _root_.com.osinka.mongodb._
 import Preamble._
 
