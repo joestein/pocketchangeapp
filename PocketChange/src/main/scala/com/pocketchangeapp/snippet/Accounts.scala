@@ -1,16 +1,16 @@
-package com.pocketchangeapp.snippet
+package com.pocketchangeapp {
+package snippet {
 
 import java.util.Date
 
-import scala.xml._
-import net.liftweb._
-import http._
-import js._
-import util._
-import S._
-import SHtml._
-import scala.xml._
-import Helpers._
+import scala.xml.{NodeSeq,Text}
+
+import net.liftweb.common.{Box,Empty,Full}
+import net.liftweb.http.{RequestVar,S,SHtml}
+import net.liftweb.http.js.JsCmds
+
+// Import "bind", "chooseTemplate" and associated implicits
+import net.liftweb.util.Helpers._
 
 import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
@@ -34,8 +34,8 @@ class Accounts {
             bind("acct", chooseTemplate("account", "entry", xhtml),
                  "name" -> Text(acct.name),
                  "description" -> Text(acct.description),
-                 "actions" -> { link("/manage", () => deleteAccount(acct), Text("Delete")) ++ Text(" ") ++
-                               link("/editAcct", () => currentAccountVar(acct), Text("Edit")) })
+                 "actions" -> { SHtml.link("/manage", () => deleteAccount(acct), Text("Delete")) ++ Text(" ") ++
+                               SHtml.link("/editAcct", () => currentAccountVar(acct), Text("Edit")) })
           }).toSeq
 			}) openOr Text("You're not logged in")
   }
@@ -51,18 +51,18 @@ class Accounts {
       Account.validate(currentAccount) match {
         case Nil =>
             Account save currentAccount
-          redirectTo("/manage")
-        case x => error(x)
+          S.redirectTo("/manage")
+        case x => S.error(x)
       }
     }
 
     val acct = currentAccount
 
     bind("acct", xhtml,
-         "id" -> hidden(() => currentAccountVar(acct)),
-         "name" -> text(currentAccount.name, currentAccount.name = _),
-         "description" -> text(currentAccount.description, currentAccount.description = _),
-         "save" -> submit("Save", doSave))
+         "id" -> SHtml.hidden(() => currentAccountVar(acct)),
+         "name" -> SHtml.text(currentAccount.name, currentAccount.name = _),
+         "description" -> SHtml.text(currentAccount.description, currentAccount.description = _),
+         "save" -> SHtml.submit("Save", doSave))
   }
 
   final val graphChoices = List("history" -> "Balance History",
@@ -155,3 +155,6 @@ class Accounts {
 		    })
   }
 }
+
+// Close package statement
+}}

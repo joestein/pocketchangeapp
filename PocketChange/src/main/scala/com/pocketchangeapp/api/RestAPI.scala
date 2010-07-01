@@ -1,17 +1,14 @@
 /*
  * RestAPI.scala
  */
-package com.pocketchangeapp.api
-
-import net.liftweb._
-import http._
-import rest._
-import util._
-import mapper._
-import Helpers._
-import net.liftweb.util.Helpers.toLong
+package com.pocketchangeapp {
+package api {
 
 import scala.xml.{Node, NodeSeq}
+
+import net.liftweb.common.{Box,Full,Logger}
+import net.liftweb.http.{AtomResponse,BadResponse,CreatedResponse,GetRequest,LiftResponse,LiftRules,NotFoundResponse,ParsePath,PutRequest,Req,RewriteRequest}
+import net.liftweb.http.rest.XMLApiHelper
 
 import com.osinka.mongodb.Preamble._
 
@@ -133,11 +130,15 @@ object RestAPI extends XMLApiHelper{
         }
       }
       catch {
-        case e => Log.error("Could not add expense", e); BadResponse()
+        case e => Logger(this.getClass).error("Could not add expense", e); BadResponse()
       }
     }
-    case _ => Log.error("Request was malformed"); BadResponse()
+    case _ => Logger(this.getClass).error("Request was malformed"); BadResponse()
     }
   }
 
 }
+
+
+// Close package statements
+}}

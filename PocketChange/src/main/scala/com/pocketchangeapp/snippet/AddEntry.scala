@@ -1,23 +1,26 @@
-package com.pocketchangeapp.snippet
+package com.pocketchangeapp {
+package snippet {
 
-import scala.xml._
-import net.liftweb._
-import http._
-import util._
-import S._
-import SHtml._
-import scala.xml._
-import Helpers._
+import java.util.Date
+
+import scala.xml.{NodeSeq,Text}
+
+import net.liftweb.common.{Box,Empty,Full,Logger}
+import net.liftweb.http.{FileParamHolder,S,SHtml,StatefulSnippet}
+
+// Import "bind", as well as the implicits that make bind easy
+import net.liftweb.util.Helpers._
 
 import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.util.Util
 
-import java.util.Date
+import com.pocketchangeapp.model.{Account,Expense,User}
+import com.pocketchangeapp.util.Util
 
 /* date | desc | tags | value */ 
 class AddEntry extends StatefulSnippet {
-  def dispatch = {
+  def dispatch : DispatchIt = {
     case "addentry" => add _
   }
 
@@ -31,20 +34,20 @@ class AddEntry extends StatefulSnippet {
   def add(in: NodeSeq): NodeSeq = User.currentUser match {
     case Full(user) if user.editable.size > 0 => {
 
-        def doTagsAndSubmit(t: String) {
-          tags = t
-          if (tags.trim.length == 0) error("We're going to need at least one tag.")
-          else {
-            /* Get the date correctly, add the datepicker: comes in as yyyy/mm/dd */
-            val entryDate = Util.slashDate.parse(date)
+      def doTagsAndSubmit(t: String) {
+        tags = t
+        if (tags.trim.length == 0) error("We're going to need at least one tag.")
+        else {
+          /* Get the date correctly, add the datepicker: comes in as yyyy/mm/dd */
+          val entryDate = Util.slashDate.parse(date)
 
             val amount = Expense.amount.fromString(value)
 
             // Rework to not throw exceptions
             val currentAccount = Account.byId(account).get
 
-            // We need to determine the last serial number and balance for the date in question
-            val (entrySerial,entryBalance) = Expense.getLastExpenseData(currentAccount, entryDate)
+          // We need to determine the last serial number and balance for the date in question
+          val (entrySerial,entryBalance) = Expense.getLastExpenseData(currentAccount, entryDate)
 
 	  val e = new Expense(currentAccount)
           e.dateOf = entryDate
@@ -65,7 +68,7 @@ class AddEntry extends StatefulSnippet {
 	    // If someone sends nothing...
 	    case Full(FileParamHolder(_, _, "", _)) => true
 	    case Full(something) => {
-	      Log.error("Received file attachment: " + something)
+	      Logger(classOf[AddEntry]).error("Received invalid file attachment: " + something)
 	      S.error("Invalid receipt attachment")
 	      false
 	    }
@@ -80,23 +83,25 @@ class AddEntry extends StatefulSnippet {
               val newBalance = currentAccount.balance + e.amount
 	      currentAccount.balance = newBalance
               Account save currentAccount
-              notice("Entry added!")
+              S.notice("Entry added!")
 	      unregisterThisSnippet() // dpp: remove the statefullness of this snippet
 	    }
-            case (x,_) => error(x)
+            case (x,_) => S.error(x)
 	  }
 	}
       }
 
         bind("e", in, 
-            "account" -> select(user.editable.map(acct => (acct.id, acct.name)).toSeq, Empty, oid => account = oid),
-            "dateOf" -> text("", date = _) % ("size" -> "10"),
-            "desc" -> text("", desc = _),
-            "value" -> text("", value = _),
-	     "receipt" -> fileUpload(fph => fileHolder = Full(fph)),
-            "tags" -> text(tags, doTagsAndSubmit))
+            "account" -> SHtml.select(user.editable.map(acct => (acct.id, acct.name)).toSeq, Empty, oid => account = oid),
+            "dateOf" -> SHtml.text("", date = _) % ("size" -> "10"),
+            "desc" -> SHtml.text("", desc = _),
+            "value" -> SHtml.text("", value = _),
+	     "receipt" -> SHtml.fileUpload(fph => fileHolder = Full(fph)),
+            "tags" -> SHtml.text(tags, doTagsAndSubmit))
       }
     case _ => Text("")
   }
 }
 
+// Close package statements
+}}

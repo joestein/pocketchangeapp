@@ -1,11 +1,7 @@
-/**
- Insert copyright boilerplate here
-*/
-
 package com.pocketchangeapp.model
 
 import _root_.java.math.MathContext
-import _root_.net.liftweb.util._
+import net.liftweb.common.{Box,Empty}
 import _root_.net.liftweb.mongodb._
 
 import com.pocketchangeapp.db._
@@ -23,7 +19,7 @@ class Account(val owner: User) extends MongoObject with EasyID {
     var balance: BigDecimal = Account.balance.zero
     var notes: List[String] = Nil
 
-    def tags = entries flatMap { _.tags }
+    def tags = entries.flatMap(_.tags).toList.sort(_ < _).removeDuplicates
     def entries = Expense.getByAcct(this, Empty, Empty)
     def addAdmin(user: User) { admins ::= user }
 }

@@ -3,6 +3,7 @@ package net.liftweb.mongodb
 import _root_.java.util.{Locale, TimeZone}
 import _root_.scala.xml.{NodeSeq, Node, Group, Text, Elem}
 import _root_.scala.xml.transform._
+import net.liftweb.common.{Box,Full,Empty,Failure,Logger}
 import _root_.net.liftweb.sitemap._
 import _root_.net.liftweb.sitemap.Loc._
 import _root_.net.liftweb.util.Helpers._
@@ -118,7 +119,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         override def displayName = passwordDisplayName
         
         override def validate(obj: ModelType): List[FieldError] = {
-            Log.debug("validate password: "+obj.invalidPw+"/"+obj.invalidMsg+" <- "+obj.password.get)
+            Logger(classOf[MegaProtoUser]).debug("validate password: "+obj.invalidPw+"/"+obj.invalidMsg+" <- "+obj.password.get)
             if (!obj.invalidPw && obj.password.get != "*") Nil
             else if (obj.invalidPw) List(FieldError(this, Text(obj.invalidMsg)))
             else List(FieldError(this, Text(S.??("password.must.set"))))
@@ -360,7 +361,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         onLogOut.foreach(_(curUser))
         curUserId.remove()
         curUser.remove()
-        S.request.foreach(_.request.getSession.invalidate)
+        S.request.foreach(_.request.session.terminate)
     }
 
     private object curUserId extends SessionVar[Box[String]](Empty)
@@ -421,7 +422,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
         val theName = signUpPath.mkString("")
 
         def testSignup() {
-            Log.debug("testSignup called")
+            Logger(classOf[MegaProtoUser]).debug("testSignup called")
             validate(theUser) match {
                 case Nil =>
                     theUser.validated = skipEmailValidation

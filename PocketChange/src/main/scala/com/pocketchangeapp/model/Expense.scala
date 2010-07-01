@@ -1,8 +1,5 @@
-/**
- Insert copyright boilerplate here
-*/
-
-package com.pocketchangeapp.model
+package com.pocketchangeapp {
+package model {
 
 import _root_.java.math.MathContext
 import _root_.java.util.Date
@@ -10,9 +7,9 @@ import _root_.java.text.{DateFormat,SimpleDateFormat}
 
 import scala.xml.{NodeSeq,Text}
 
-import _root_.net.liftweb.util._
+import net.liftweb.common.{Box,Empty,Full,Logger}
+import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.mongodb._
-import Helpers._
 
 import org.bson.types.ObjectId
 import com.mongodb.DBObject
@@ -33,7 +30,7 @@ class Expense(val account: Account) extends MongoObject with EasyID {
     var tags: List[String] = Nil
 
     def uploadReceipt(mime: String, fileName: String, data: Array[Byte]) {
-        Log.debug("receipt uploaded "+fileName)
+        Logger(classOf[Expense]).debug("receipt uploaded "+fileName)
         receipt = Some(Database.saveBinary(mime, fileName, data))
     }
 
@@ -174,3 +171,6 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
 
     def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
 }
+
+// Close package statements 
+}}

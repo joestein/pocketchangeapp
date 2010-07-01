@@ -1,6 +1,7 @@
 package net.liftweb.mongodb
 
 import scala.xml._
+import net.liftweb.common.{Box,Full,Empty,Failure}
 import _root_.net.liftweb.http._
 import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.util._

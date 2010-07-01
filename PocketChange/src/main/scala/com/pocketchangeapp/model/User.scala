@@ -1,6 +1,6 @@
 package com.pocketchangeapp.model
 
-import _root_.net.liftweb.util._
+import net.liftweb.common.Full
 import _root_.net.liftweb.mongodb._
 
 import org.bson.types.ObjectId

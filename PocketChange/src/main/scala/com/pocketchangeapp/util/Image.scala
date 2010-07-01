@@ -1,10 +1,12 @@
-package com.pocketchangeapp.util
+/*
+ * The split package here allows us to reference top-level
+ * PocketChange packages, like model, snippet, etc.
+ */
+package com.pocketchangeapp {
+package util {
 
-import _root_.net.liftweb.http._
-import _root_.net.liftweb.util._
-import _root_.net.liftweb.mapper._
-import S._
-import Helpers._
+import net.liftweb.common.Full
+import net.liftweb.http.{ForbiddenResponse,InMemoryResponse,LiftResponse,PlainTextResponse,RedirectResponse,StreamingResponse}
 
 import _root_.com.mongodb.gridfs._
 import com.pocketchangeapp.db.Database
@@ -46,3 +48,6 @@ object Image {
         }
     }
 }
+
+// Close package statements
+}}

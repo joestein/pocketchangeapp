@@ -1,9 +1,8 @@
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.pocketchangeapp</groupId>
   <artifactId>PocketChange</artifactId>
-  <version>0.1.1</version>
+  <version>0.2</version>
   <packaging>war</packaging>
   <name>PocketChangeApp</name>
   <inceptionYear>2008</inceptionYear>
@@ -12,7 +11,7 @@
       document-oriented database for storage.</description>
   <properties>
     <scala.version>2.7.7</scala.version>
-    <lift.version>1.0.3</lift.version>
+    <lift.version>2.0</lift.version>
   </properties>
 
   <pluginRepositories>
@@ -66,7 +65,7 @@
     </dependency>
     <dependency>
       <groupId>net.liftweb</groupId>
-      <artifactId>lift-core</artifactId>
+      <artifactId>lift-webkit</artifactId>
      <version>${lift.version}</version>
     </dependency>
     <dependency>

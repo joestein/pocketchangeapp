@@ -1,8 +1,9 @@
 package com.pocketchangeapp.db
 
+import net.liftweb.common.Box
 import _root_.net.liftweb.util.Helpers._
-import _root_.net.liftweb.util._
 import _root_.net.liftweb.mongodb.MetaMapper
+
 import _root_.org.bson.types.ObjectId
 import _root_.com.osinka.mongodb._
 import _root_.com.osinka.mongodb.shape._
