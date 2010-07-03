@@ -11,7 +11,10 @@ The app is not using Mapper at all and all the functionality (including receipt 
 
 ## Original README ##
 This is the demo application that we're building to support the Lift Book.
-http://www.github.com/tjweir/liftbook/
+
+[Lift Book repo](http://www.github.com/tjweir/liftbook/)
+
+[LiftWeb Source](http://www.github.com/lift/lift)
 
 
 - Derek, Marius and Tyler
