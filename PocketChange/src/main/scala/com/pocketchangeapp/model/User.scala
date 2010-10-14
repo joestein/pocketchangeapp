@@ -11,13 +11,13 @@ import com.osinka.mongodb.shape._
 import Preamble._
 
 class User extends MegaProtoUser {
-    def accounts = Account where {Account.owner is_== this} in Account.getCollection
+    def accounts = (Account where {Account.owner is_== this} in Account.getCollection).toList
 
-    def administred = Account where {Account.admins has this} in Account.getCollection
+    def administred = (Account where {Account.admins has this} in Account.getCollection).toList
 
     def editable = accounts ++ administred
 
-    def viewed = Account where {Account.viewers has this} in Account.getCollection
+    def viewed = (Account where {Account.viewers has this} in Account.getCollection).toList
 
     def allAccounts = accounts ++ administred ++ viewed
 }

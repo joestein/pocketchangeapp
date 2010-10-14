@@ -1,15 +1,15 @@
 package com.pocketchangeapp {
 package model {
 
-import _root_.java.math.MathContext
-import _root_.java.util.Date
-import _root_.java.text.{DateFormat,SimpleDateFormat}
+import java.math.MathContext
+import java.util.Date
+import java.text.DateFormat
 
-import scala.xml.{NodeSeq,Text}
+import scala.xml.{Elem,NodeSeq,Text}
 
 import net.liftweb.common.{Box,Empty,Full,Logger}
-import _root_.net.liftweb.util.Helpers._
-import _root_.net.liftweb.mongodb._
+import net.liftweb.util.Helpers._
+import net.liftweb.mongodb._
 
 import org.bson.types.ObjectId
 import com.mongodb.DBObject
@@ -40,7 +40,8 @@ class Expense(val account: Account) extends MongoObject with EasyID {
         receipt foreach Database.removeBinary
     }
 
-    def accountName = Text("My account is " + account.name)
+    // A helper to simplify access to the account name
+    def accountName = account.name
 
     final val dateFormat =
       DateFormat.getDateInstance(DateFormat.SHORT)
@@ -59,71 +60,12 @@ class Expense(val account: Account) extends MongoObject with EasyID {
 
     def owner = account.owner
 
-    def showTags = Text(tags.mkString(", "))
-    def showXMLTags: NodeSeq = tags.map(t => <tag>{t}</tag>)
-    def showJSONTags: String = tags.map(t => {"'" + t + "'" }).mkString(", ")
-
     override def equals(other: Any) = other match {
         case e : Expense if e.mongoOID == this.mongoOID => true
         case _ => false
     }
 
     override def hashCode = this.mongoOID.hashCode
-
-    private def getAccountName = account.name
-
-    def toXML: NodeSeq = {
-        val id = this.mongoOID map { "http://www.pocketchangeapp.com/api/expense/" + _ }
-        val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-        val edate = formatter.format(this.dateOf)
-
-        <expense>
-            <id>{id}</id>
-            <accountname>{getAccountName}</accountname>
-            <date>{edate}</date>
-            <description>{description}</description>
-            <amount>{amount.toString}</amount>
-            <tags>
-                {showXMLTags}
-            </tags>
-        </expense>
-    }
-
-    /* Atom requires either an entry or feed to have:
-    - title
-    - lastupdated
-    - uid
-    */
-    def toAtom = {
-        val id = this.mongoOID map { "http://www.pocketchangeapp.com/api/expense/" + _ }
-        val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-        val edate = formatter.format(this.dateOf)
-
-        <entry xmlns="http://www.w3.org/2005/Atom">
-            <expense>
-                <id>{id}</id>
-                <accountname>{getAccountName}</accountname>
-                <date>{edate}</date>
-                <description>{description}</description>
-                <amount>{amount.toString}</amount>
-                <tags>
-                    {showXMLTags}
-                </tags>
-            </expense>
-        </entry>
-    }
-
-    def toJSON =
-        this.mongoOID map { id =>
-            val formatter = new  SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-            val edate = formatter.format(this.dateOf)
-
-            "{'expense':{ 'id':'" + "http://www.pocketchangeapp.com/api/expense/" + id + "','accountname':'" + getAccountName + "'," +
-            "'date':'" + edate + "'," +
-            "'description':'" + description + "'," +
-            "'amount':'" + amount.toString + "'," +
-            "'tags': [" + showJSONTags + "]}"
-        }
 }
 
 object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDecimalFields[Expense,Expense] {
@@ -145,16 +87,16 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
 
     override def factory(dbo: DBObject) = for {account(acct) <- Some(dbo)} yield new Expense(acct)
 
-    def getByAcct(acct: Account, startDate: Box[Date], endDate: Box[Date]) = {
+    def getByAcct(acct: Account, startDate: Box[Date], endDate: Box[Date], limit: Box[Int]) = {
         // The method could provide a means to modify Query object as original had. The only use
         // would be to limit query to 1 result, e.g. "query take 1"
         val clauses = Full(account is_== acct) :: startDate.map{dateOf is_>=} :: endDate.map{dateOf is_<=} :: Nil
         val query = clauses.flatMap{x => x} reduceLeft {_ and _}
-        Expense where query sortBy serialNumber.descending in getCollection
+        Expense where query sortBy serialNumber.descending take limit in getCollection
     }
 
     // returns the serial and balance of the last entry before this one
-    def getLastExpenseData(acct: Account, date: Date): (Long, BigDecimal) = getByAcct(acct, Empty, Full(date)).headOption match {
+    def getLastExpenseData(acct: Account, date: Date): (Long, BigDecimal) = getByAcct(acct, Empty, Full(date), Empty).headOption match {
         case Some(expense) => (expense.serialNumber, expense.currentBalance)
         case _ => (0, 0)
     }
@@ -170,7 +112,17 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
     }
 
     def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
+
+    /**
+    * Define an extractor that can be used to locate an Expense based
+    * on its ID. Returns a tuple of the Expense and whether the
+    * Expense's account is public.
+    */
+    def unapply (id: String) : Option[(Expense,Boolean)] = {
+      (this where {oid is_== new ObjectId(id)} in getCollection).headOption map { expense =>
+        (expense, expense.account.is_public)
+      }
+    }
 }
 
-// Close package statements 
 }}

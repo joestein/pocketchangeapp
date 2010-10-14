@@ -5,23 +5,53 @@ import net.liftweb.common.{Box,Empty}
 import _root_.net.liftweb.mongodb._
 
 import com.pocketchangeapp.db._
+import org.bson.types.ObjectId
 import com.mongodb.DBObject
 import com.osinka.mongodb._
 import com.osinka.mongodb.shape._
 
 class Account(val owner: User) extends MongoObject with EasyID {
+    // The name of this account
     var name: String = ""
+  
+    // A description of this account
     var description: String = ""
+
+    // Which users, besides the owner, are allowed to modify this account?
     var admins: List[User] = Nil
+
+    // Which users, besides the owner and admins, are allowed to view this account?
     var viewers: List[User] = Nil
+
+    // An optional external account identifier
     var externalAccount: Option[String] = None
+
+    /* Setting this to true allows anyone to view this account and its activity.
+     * This is read-only access. */
     var is_public: Boolean = false
+
+    // The balance has up to 16 digits and 2 decimal places
     var balance: BigDecimal = Account.balance.zero
+
+    // Optional notes about the account
     var notes: List[String] = Nil
 
+    // All tags used on expenses for this account
     def tags = entries.flatMap(_.tags).toList.sort(_ < _).removeDuplicates
-    def entries = Expense.getByAcct(this, Empty, Empty)
+
+    // The actual expense entries
+    def entries = Expense.getByAcct(this, Empty, Empty, Empty)
     def addAdmin(user: User) { admins ::= user }
+
+    // This method checks view access by a particular user
+    def isViewableBy (user : Box[User]) : Boolean = {
+      is_public ||
+      user.map(_.allAccounts.contains(this)).openOr(false)
+    }
+
+    // This method checks edit access by a particular user
+    def isEditableBy (user : Box[User]) : Boolean =
+      user.map(_.editable.contains(this)).openOr(false)
 }
 
 object Account extends MongoObjectShape[Account] with Model[Account] with BigDecimalFields[Account,Account]  { account =>
@@ -44,4 +74,12 @@ object Account extends MongoObjectShape[Account] with Model[Account] with BigDec
     override def factory(dbo: DBObject) = for {owner(user) <- Some(dbo)} yield new Account(user)
 
     def findByName(u: User, n: String): Box[Account] = this where {(owner is_== u) and (name is_== n)} in getCollection firstOption
+
+    /**
+     * Define an extractor that can be used to locate an Account based
+     * on its ID.
+     */
+    def unapply (id : String) : Option[Account] = {
+        this where {oid is_== new ObjectId(id)} in getCollection headOption
+    }
 }

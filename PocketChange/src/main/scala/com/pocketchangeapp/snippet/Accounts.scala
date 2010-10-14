@@ -83,7 +83,7 @@ class Accounts {
               val tag = S.param("tag")
 
               // Ajax utility methods. Defined here to capture the closure vars defined above
-              def entryTable = buildExpenseTable(Expense.getByAcct(acct, startDate, endDate).toList, tag, xhtml)
+              def entryTable = buildExpenseTable(Expense.getByAcct(acct, startDate, endDate, Empty).toList, tag, xhtml)
 
               def updateGraph() = {
                 val dateClause : String = if (startDate.isDefined || endDate.isDefined) {
@@ -116,6 +116,7 @@ class Accounts {
               }
 
               bind("acct", xhtml,
+                   "atomLink" -> <link href={"/api/account/" + acct.id} type="application/atom+xml" rel="alternate" title={acct.name + " feed"} />,
                    "name" -> Text(acct.name),
                    "balance" -> Text(acct.balance.toString),
                    "tags" -> tags,

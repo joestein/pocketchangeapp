@@ -43,7 +43,8 @@ object Charting {
     acct =>
       val entries = Expense.getByAcct(acct, 
 				      Util.getDateParam("start", Util.noSlashDate.parse),
-				      Util.getDateParam("end", Util.noSlashDate.parse))
+				      Util.getDateParam("end", Util.noSlashDate.parse),
+                                      Empty)
 
     val serialMap = new HashMap[String,Long]()
     val dateMap = new HashMap[String,BigDecimal]()
@@ -72,7 +73,8 @@ object Charting {
   private def buildTagChartData (account: Account) = {
     val entries = Expense.getByAcct(account, 
 				    Util.getDateParam("start", Util.noSlashDate.parse),
-				    Util.getDateParam("end", Util.noSlashDate.parse))
+				    Util.getDateParam("end", Util.noSlashDate.parse),
+                                    Empty)
     
     val tagMap = new HashMap[String,BigDecimal]
 
