@@ -1,13 +1,13 @@
-package com.pocketchangeapp {
-package snippet {
+package com.pocketchangeapp
+package snippet
 
 import java.util.Date
 
 import scala.xml.{NodeSeq,Text}
 
-import net.liftweb.common.{Box,Empty,Full}
-import net.liftweb.http.{RequestVar,S,SHtml}
 import net.liftweb.http.js.JsCmds
+import net.liftweb.common.{Logger, Box, Empty, Full}
+import net.liftweb.http.{DispatchSnippet, RequestVar, S, SHtml}
 
 // Import "bind", "chooseTemplate" and associated implicits
 import net.liftweb.util.Helpers._
@@ -16,7 +16,12 @@ import com.pocketchangeapp.db.Database
 import com.pocketchangeapp.model._
 import com.pocketchangeapp.util.Util
 
-class Accounts {
+object Accounts extends DispatchSnippet with Logger {
+  def dispatch : DispatchIt = {
+    case "manage" => manage _
+    case "edit" => edit _
+    case "detail" => detail _
+  }
 
   def manage (xhtml : NodeSeq) : NodeSeq = {
     def deleteAccount (acct : Account) {
@@ -40,14 +45,15 @@ class Accounts {
 			}) openOr Text("You're not logged in")
   }
 
+
   object currentAccountVar extends RequestVar[Account]({
-          new Account(User.currentUser.open_!)
-    })
+    new Account(User.currentUser.open_!)
+  })
+
   def currentAccount = currentAccountVar.is
 
   def edit (xhtml : NodeSeq) : NodeSeq = {
     def doSave () = {
-
       Account.validate(currentAccount) match {
         case Nil =>
             Account save currentAccount
@@ -126,9 +132,11 @@ class Accounts {
                    "graph" -> <img src={"/graph/" + acctName + "/history"} />,
                    "table" -> entryTable)
             }
-          case _ => Text("Could not locate account " + acctName)
-        }
+          case _ =>
+            warn("Couldn't locate account \"%s\"".format(acctName));
+            Text("Could not locate account " + acctName)
       }
+    }
     case _ => Text("No account name provided")
   }
 
@@ -140,22 +148,19 @@ class Accounts {
     }
 
     filtered.flatMap({ entry =>
-     val desc  = 
-	if (entry.receipt != None) {
-	  Text(entry.description + " ") ++ <a href={ "/image/" + entry.id }>View receipt</a>
-	} else {
-	  Text(entry.description)
-	}
+      val desc  = 
+	      if (entry.receipt != None) {
+	        Text(entry.description + " ") ++ <a href={ "/image/" + entry.id }>View receipt</a>
+	      } else {
+	        Text(entry.description)
+	      }
 	
       bind("entry", chooseTemplate("acct", "tableEntry", template),
-	   "date" -> Text(Util.slashDate.format(entry.dateOf)),
-	   "desc" -> desc,
-	   "tags" -> Text(entry.tags.mkString(", ")),
-	   "amt" -> Text(entry.amount.toString),
-	   "balance" -> Text(entry.currentBalance.toString))
-		    })
+	         "date" -> Text(Util.slashDate.format(entry.dateOf)),
+	         "desc" -> desc,
+	         "tags" -> Text(entry.tags.mkString(", ")),
+	         "amt" -> Text(entry.amount.toString),
+	         "balance" -> Text(entry.currentBalance.toString))
+      })
   }
 }
-
-// Close package statement
-}}

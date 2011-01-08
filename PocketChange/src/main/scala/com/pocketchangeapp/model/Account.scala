@@ -1,8 +1,8 @@
 package com.pocketchangeapp.model
 
-import _root_.java.math.MathContext
+import java.math.MathContext
 import net.liftweb.common.{Box,Empty}
-import _root_.net.liftweb.mongodb._
+import net.liftweb.mongodb._
 
 import com.pocketchangeapp.db._
 import org.bson.types.ObjectId
@@ -37,7 +37,7 @@ class Account(val owner: User) extends MongoObject with EasyID {
     var notes: List[String] = Nil
 
     // All tags used on expenses for this account
-    def tags = entries.flatMap(_.tags).toList.sort(_ < _).removeDuplicates
+    def tags = entries.flatMap(_.tags).toList.sorted.distinct
 
     // The actual expense entries
     def entries = Expense.getByAcct(this, Empty, Empty, Empty)
@@ -73,7 +73,7 @@ object Account extends MongoObjectShape[Account] with Model[Account] with BigDec
 
     override def factory(dbo: DBObject) = for {owner(user) <- Some(dbo)} yield new Account(user)
 
-    def findByName(u: User, n: String): Box[Account] = this where {(owner is_== u) and (name is_== n)} in getCollection firstOption
+    def findByName(u: User, n: String): Box[Account] = this where {(owner is_== u) and (name is_== n)} in getCollection headOption
 
     /**
      * Define an extractor that can be used to locate an Account based

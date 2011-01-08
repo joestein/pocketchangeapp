@@ -1,12 +1,11 @@
 package com.pocketchangeapp.db
 
-import _root_.net.liftweb.util._
-import _root_.com.mongodb._
-import _root_.com.mongodb.gridfs._
-import _root_.com.pocketchangeapp.model._
-import _root_.org.bson.types.ObjectId
-import _root_.com.osinka.mongodb._
-import Preamble._
+import net.liftweb.util._
+import com.mongodb._
+import com.mongodb.gridfs._
+import com.pocketchangeapp.model._
+import org.bson.types.ObjectId
+import com.osinka.mongodb._
 
 object Database {
     val Host       = "localhost"
@@ -26,11 +25,11 @@ object Database {
              mongodbColl = m.getCollection.underlying
              fields <- m.indexes} {
 
-            val indexesRequired: DBObject =
-                (fields map {i => i._1.mongoFieldName -> i._2.mongoOrder}
-                    foldLeft Map.empty[String,Any]) {(m,f) => m + f}
-            mongodbColl.ensureIndex( indexesRequired )
-        }
+          val indexesRequired: DBObject =
+            (fields map {i => i._1.mongoFieldName -> i._2.mongoOrder}
+             foldLeft Map.empty[String,Any]) {(m,f) => m + f}
+               mongodbColl.ensureIndex( indexesRequired )
+         }
     }
 
     object inLiftRequest extends LoanWrapper {
@@ -43,7 +42,7 @@ object Database {
             }
     }
 
-    def getBinary(oid: ObjectId) = Helpers.tryo(gridFS.find(oid))
+    def getBinary(oid: ObjectId) = Option(gridFS.find(oid))
 
     def saveBinary(mime: String, fileName: String, data: Array[Byte]) = {
         val file = gridFS.createFile(data)

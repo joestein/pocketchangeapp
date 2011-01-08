@@ -4,8 +4,8 @@
  * Copyright 2008-2010 Derek Chen-Becker, Marius Danciu and Tyler Wier
  * 
  */
-package com.pocketchangeapp {
-package api {
+package com.pocketchangeapp
+package api
 
 import java.text.SimpleDateFormat
 
@@ -37,7 +37,7 @@ object RestFormatters {
   /**
    * Generates the XML REST representation of an Expense
    */
-  def toXML (e : Expense) : Node = Xml.toXml(toJSON(e)).first
+  def toXML (e : Expense) : Node = Xml.toXml(toJSON(e)).head
 
   /**
    * Generates the JSON REST representation of an Expense
@@ -66,7 +66,7 @@ object RestFormatters {
     <feed xmlns="http://www.w3.org/2005/Atom">
       <title>{a.name}</title>
       <id>urn:uuid:{a.id}</id>
-      <updated>{entries.toList.firstOption.map(restTimestamp) getOrElse
+      <updated>{entries.toList.headOption.map(restTimestamp) getOrElse
                 timestamp.format(new java.util.Date)}</updated>
       { entries.flatMap(toAtom) }
     </feed>
@@ -146,7 +146,7 @@ object RestFormatters {
       val contents = new String(rawBytes, "UTF-8")
       JSON.parseFull(contents) match {
         case Some(data : Map[String,Any]) => {
-          fromMap(data.mapElements(_.toString), account)
+          fromMap(data.mapValues(_.toString), account)
         }
         case other => Failure("Invalid JSON submitted: \"%s\"".format(contents))
       }
@@ -177,5 +177,3 @@ object RestFormatters {
     case other => Failure("Missing root expense element")
   }
 }
-
-}}

@@ -1,5 +1,5 @@
-package com.pocketchangeapp {
-package model {
+package com.pocketchangeapp
+package model
 
 import java.math.MathContext
 import java.util.Date
@@ -49,7 +49,7 @@ class Expense(val account: Account) extends MongoObject with EasyID {
     def dateAsHtml = Text(dateFormat.format(dateOf))
 
     def tags(newTags: String): this.type = {
-        tags = (tags ++ newTags.roboSplit(",")).removeDuplicates
+        tags = (tags ++ newTags.roboSplit(",")).distinct
         this
     }
 
@@ -111,7 +111,7 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
         c(serialNumber is_> serial) = serialNumber.inc(1) and currentBalance.inc(amount) // "inc" will take care of amount serialization
     }
 
-    def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.removeDuplicates
+    def findTagExpenses(search: String): List[Expense] = (this where {tags is_~ search.r} in getCollection).toList.distinct
 
     /**
     * Define an extractor that can be used to locate an Expense based
@@ -124,5 +124,3 @@ object Expense extends MongoObjectShape[Expense] with Model[Expense] with BigDec
       }
     }
 }
-
-}}

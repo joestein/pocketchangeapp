@@ -8,7 +8,6 @@ import com.mongodb.DBObject
 import com.pocketchangeapp.db._
 import com.osinka.mongodb._
 import com.osinka.mongodb.shape._
-import Preamble._
 
 class User extends MegaProtoUser {
     def accounts = (Account where {Account.owner is_== this} in Account.getCollection).toList

@@ -1,13 +1,12 @@
 package com.pocketchangeapp.db
 
 import net.liftweb.common.Box
-import _root_.net.liftweb.util.Helpers._
-import _root_.net.liftweb.mongodb.MetaMapper
+import net.liftweb.util.Helpers._
+import net.liftweb.mongodb.MetaMapper
 
-import _root_.org.bson.types.ObjectId
-import _root_.com.osinka.mongodb._
-import _root_.com.osinka.mongodb.shape._
-import Preamble._
+import org.bson.types.ObjectId
+import com.osinka.mongodb._
+import com.osinka.mongodb.shape._
 
 trait Model[T] extends MetaMapper[T] { shape: ObjectShape[T] =>
     type FieldIndex = (ObjectField, SortOrder)
@@ -26,9 +25,9 @@ trait Model[T] extends MetaMapper[T] { shape: ObjectShape[T] =>
 
     def byId(oid: ObjectId): Box[T] = getCollection.get(oid)
 
-    def one(qt: QueryTerm[T]): Box[T] = (shape where qt in getCollection).firstOption
+    def one(qt: QueryTerm[T]): Box[T] = (shape where qt in getCollection).headOption
 
-    def one(q: ShapeQuery): Box[T] = (shape where q in getCollection).firstOption
+    def one(q: ShapeQuery): Box[T] = (shape where q in getCollection).headOption
 
     def all(qt: QueryTerm[T]): Iterable[T] = shape where qt in getCollection
 

@@ -6,7 +6,6 @@ import scala.collection.mutable.HashMap
 import net.liftweb.common.{Box,Empty,Full}
 import net.liftweb.http.{ForbiddenResponse,InMemoryResponse,LiftResponse,RedirectResponse}
 
-
 import java.io.{PipedInputStream,PipedOutputStream}
 import java.text.DecimalFormat
 
@@ -54,14 +53,14 @@ object Charting {
     entries.foreach({entry =>
       val date = Util.slashDate.format(entry.dateOf)
       if (serialMap.getOrElse(date,0l) < entry.serialNumber) {
-	serialMap += date -> entry.serialNumber
-	dateMap += date -> entry.currentBalance
+	      serialMap += date -> entry.serialNumber
+	      dateMap += date -> entry.currentBalance
       }
     })
 
     val dataset = new DefaultCategoryDataset
 	  
-    dateMap.keySet.toList.sort(_ < _).foreach(key => dataset.addValue(dateMap(key), acct.name, key))
+    dateMap.keySet.toList.sorted.foreach(key => dataset.addValue(dateMap(key), acct.name, key))
 
     returnChartPNG(ChartFactory.createLineChart("Balance History for " + name,
 						"Date",
@@ -72,8 +71,8 @@ object Charting {
 
   private def buildTagChartData (account: Account) = {
     val entries = Expense.getByAcct(account, 
-				    Util.getDateParam("start", Util.noSlashDate.parse),
-				    Util.getDateParam("end", Util.noSlashDate.parse),
+				                            Util.getDateParam("start", Util.noSlashDate.parse),
+				                            Util.getDateParam("end", Util.noSlashDate.parse),
                                     Empty)
     
     val tagMap = new HashMap[String,BigDecimal]
@@ -82,7 +81,7 @@ object Charting {
 
     entries.foreach({ entry =>
       entry.tags.foreach { 
-	tag => tagMap += tag -> (tagMap.getOrElse(tag, zero) + entry.amount)
+	      tag => tagMap += tag -> (tagMap.getOrElse(tag, zero) + entry.amount)
       }
     })
 
@@ -94,7 +93,7 @@ object Charting {
 
     val tags = buildTagChartData(acct)
 
-    tags.keys.toList.sort(_ < _).foreach(key => dataset.setValue(key, tags(key)))
+    tags.keys.toList.sorted.foreach(key => dataset.setValue(key, tags(key)))
 
     val chart = ChartFactory.createPieChart("Summary by Tag for " + name,
 					    dataset,
@@ -114,7 +113,7 @@ object Charting {
 
     val tags = buildTagChartData(acct)
 
-    tags.keys.toList.sort(_ < _).foreach(key => dataset.addValue(tags(key), name, key))
+    tags.keys.toList.sorted.foreach(key => dataset.addValue(tags(key), name, key))
 
     val chart = ChartFactory.createBarChart("Summary by Tag for " + name,
 					    "Tag",

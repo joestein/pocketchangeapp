@@ -1,12 +1,11 @@
-package com.pocketchangeapp {
-package snippet {
-
-import java.util.Date
+package com.pocketchangeapp
+package snippet
 
 import scala.xml.{NodeSeq,Text}
 
 import net.liftweb.common.{Box,Empty,Full,Logger}
 import net.liftweb.http.{FileParamHolder,S,SHtml,StatefulSnippet}
+import org.slf4j.LoggerFactory
 
 // Import "bind", as well as the implicits that make bind easy
 import net.liftweb.util.Helpers._
@@ -19,7 +18,10 @@ import com.pocketchangeapp.model.{Account,Expense,User}
 import com.pocketchangeapp.util.Util
 
 /* date | desc | tags | value */ 
-class AddEntry extends StatefulSnippet {
+class AddEntry extends StatefulSnippet with Logger {
+  // Use a different name for our logger
+  override val _logger = LoggerFactory.getLogger("EntryEdit")
+
   def dispatch : DispatchIt = {
     case "addentry" => add _
   }
@@ -33,23 +35,24 @@ class AddEntry extends StatefulSnippet {
   
   def add(in: NodeSeq): NodeSeq = User.currentUser match {
     case Full(user) if user.editable.size > 0 => {
-
       def doTagsAndSubmit(t: String) {
         tags = t
-        if (tags.trim.length == 0) error("We're going to need at least one tag.")
-        else {
+        if (tags.trim.length == 0) {
+          error("Cannot add an entry without tags")
+          S.error("We're going to need at least one tag.")
+        } else {
           /* Get the date correctly, add the datepicker: comes in as yyyy/mm/dd */
           val entryDate = Util.slashDate.parse(date)
 
-            val amount = Expense.amount.fromString(value)
+          val amount = Expense.amount.fromString(value)
 
-            // Rework to not throw exceptions
-            val currentAccount = Account.byId(account).get
+          // Rework to not throw exceptions
+          val currentAccount = Account.byId(account).get
 
           // We need to determine the last serial number and balance for the date in question
           val (entrySerial,entryBalance) = Expense.getLastExpenseData(currentAccount, entryDate)
 
-	  val e = new Expense(currentAccount)
+	        val e = new Expense(currentAccount)
           e.dateOf = entryDate
           e.serialNumber = entrySerial + 1
           e.description = desc
@@ -57,51 +60,51 @@ class AddEntry extends StatefulSnippet {
           e.tags(tags)
           e.currentBalance = entryBalance + amount
 
-	  // Add the optional receipt if it's the correct type
-	  val receiptOk = fileHolder match {
-	    case Full(FileParamHolder(_, null, _, _)) => true
-	    case Full(FileParamHolder(_, mime, fileName, data))
-		      if mime.startsWith("image/") => {
-			e.uploadReceipt(mime, fileName, data)
-			true
-		      }
-	    // If someone sends nothing...
-	    case Full(FileParamHolder(_, _, "", _)) => true
-	    case Full(something) => {
-	      Logger(classOf[AddEntry]).error("Received invalid file attachment: " + something)
-	      S.error("Invalid receipt attachment")
-	      false
-	    }
-	    case _ => true
-	  }
+	        // Add the optional receipt if it's the correct type
+	        val receiptOk = fileHolder match {
+	          case Full(FileParamHolder(_, null, _, _)) => true
+	          case Full(FileParamHolder(_, mime, fileName, data))
+		        if mime.startsWith("image/") => {
+			        e.uploadReceipt(mime, fileName, data)
+			        true
+		        }
+	          // If someone sends nothing...
+	          case Full(FileParamHolder(_, _, "", _)) => true
+	          case Full(something) => {
+	            error("Received invalid file attachment: " + something)
+	            S.error("Invalid receipt attachment")
+	            false
+	          }
+	          case _ => true
+	        }
 	      
-	  (Expense.validate(e),receiptOk) match {
+	        (Expense.validate(e),receiptOk) match {
             case (Nil,true) => {
-	      Expense.updateEntries(entrySerial + 1, amount)
+	            Expense.updateEntries(entrySerial + 1, amount)
               Expense save e
 
               val newBalance = currentAccount.balance + e.amount
-	      currentAccount.balance = newBalance
+	            currentAccount.balance = newBalance
               Account save currentAccount
               S.notice("Entry added!")
-	      unregisterThisSnippet() // dpp: remove the statefullness of this snippet
-	    }
-            case (x,_) => S.error(x)
-	  }
-	}
+	            this.unregisterThisSnippet() // dpp: remove the statefullness of this snippet
+	          }
+            case (x,_) => {
+              error(x)
+              S.error(x)
+            }
+	        }
+	      }
       }
 
-        bind("e", in, 
-            "account" -> SHtml.select(user.editable.map(acct => (acct.id, acct.name)).toSeq, Empty, oid => account = oid),
-            "dateOf" -> SHtml.text("", date = _) % ("size" -> "10"),
-            "desc" -> SHtml.text("", desc = _),
-            "value" -> SHtml.text("", value = _),
-	     "receipt" -> SHtml.fileUpload(fph => fileHolder = Full(fph)),
-            "tags" -> SHtml.text(tags, doTagsAndSubmit))
-      }
+      bind("e", in, 
+           "account" -> SHtml.select(user.editable.map(acct => (acct.id, acct.name)).toSeq, Empty, oid => account = oid),
+           "dateOf" -> SHtml.text("", date = _) % ("size" -> "10"),
+           "desc" -> SHtml.text("", desc = _),
+           "value" -> SHtml.text("", value = _),
+	         "receipt" -> SHtml.fileUpload(fph => fileHolder = Full(fph)),
+           "tags" -> SHtml.text(tags, doTagsAndSubmit))
+    }
     case _ => Text("")
   }
 }
-
-// Close package statements
-}}

@@ -100,7 +100,7 @@ trait MetaMapper[T] { self: ObjectShape[T] =>
 
     trait MappedString extends MappedField[String] { field: MongoScalar[String] =>
         def setFromAny(obj: T, in: Any): Boolean = in match {
-            case seq: Seq[_] if !seq.isEmpty => seq.map(x => setFromAny(obj,x))(0); true
+            case seq: Seq[_] if !seq.isEmpty => seq.map(x => setFromAny(obj,x)).head; true
             case (s: String) :: _ => rep.put(obj)(Some(s)); true
             case null => rep.put(obj)(None); false
             case s: String => rep.put(obj)(Some(s)); true

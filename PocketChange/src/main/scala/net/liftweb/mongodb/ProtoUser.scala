@@ -1,23 +1,22 @@
 package net.liftweb.mongodb
 
-import _root_.java.util.{Locale, TimeZone}
-import _root_.scala.xml.{NodeSeq, Node, Group, Text, Elem}
-import _root_.scala.xml.transform._
+import java.util.{Locale, TimeZone}
+import scala.xml.{NodeSeq, Node, Group, Text, Elem}
+import scala.xml.transform._
 import net.liftweb.common.{Box,Full,Empty,Failure,Logger}
-import _root_.net.liftweb.sitemap._
-import _root_.net.liftweb.sitemap.Loc._
-import _root_.net.liftweb.util.Helpers._
-import _root_.net.liftweb.util._
-import _root_.net.liftweb.util.Mailer._
-import _root_.net.liftweb.http._
+import net.liftweb.sitemap._
+import net.liftweb.sitemap.Loc._
+import net.liftweb.util.Helpers._
+import net.liftweb.util._
+import net.liftweb.util.Mailer._
+import net.liftweb.http._
 import js._
 import JsCmds._
 import S._
 
-import _root_.org.bson.types.ObjectId
-import _root_.com.osinka.mongodb._
-import _root_.com.osinka.mongodb.shape._
-import Preamble._
+import org.bson.types.ObjectId
+import com.osinka.mongodb._
+import com.osinka.mongodb.shape._
 
 object ProtoUser {
     val uniqueIdLen = 32
@@ -162,7 +161,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
             override def put[A2<:String](x: ModelType)(a: Option[A2]) {
                 x.locale = (for {l <- a.toSeq
                                  x <- Locale.getAvailableLocales
-                                 if x.toString == l} yield x).firstOption getOrElse Locale.getDefault
+                                 if x.toString == l} yield x).headOption getOrElse Locale.getDefault
             }
         }
     }
@@ -188,7 +187,8 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser] extends MongoObjectShape[Mod
     lazy val timeZoneList = TimeZone.getAvailableIDs.toList.
         filter(!_.startsWith("SystemV/")).
         filter(!_.startsWith("Etc/")).filter(_.length > 3).
-        sort(_ < _).map(tz => (tz, tz))
+        sorted.
+        map(tz => (tz, tz))
 
     def signupFields = firstName :: lastName :: email :: locale :: timezone :: password :: Nil
 
